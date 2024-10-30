@@ -1,13 +1,15 @@
 class Message {
   String senderId;
   String receiverId;
-  String content;
+  String? content;
+  String? imageUrl;
   DateTime timestamp;
 
   Message({
     required this.senderId,
     required this.receiverId,
-    required this.content,
+    this.content,
+    this.imageUrl,
     required this.timestamp,
   });
 
@@ -16,6 +18,7 @@ class Message {
       senderId: json['senderId'],
       receiverId: json['receiverId'],
       content: json['content'],
+      imageUrl: json['imageUrl'],
       timestamp: json['timestamp'],
     );
   }
@@ -25,6 +28,7 @@ class Message {
       'senderId': senderId,
       'receiverId': receiverId,
       'content': content,
+      'imageUrl': imageUrl,
       'timestamp': timestamp,
     };
   }
