@@ -1,4 +1,5 @@
 import 'package:echotext/constants/routes.dart';
+import 'package:echotext/requests/create_user.dart';
 import 'package:flutter/material.dart';
 
 class RegisterView extends StatefulWidget {
@@ -8,7 +9,19 @@ class RegisterView extends StatefulWidget {
   State<RegisterView> createState() => _RegisterViewState();
 }
 
+
+
 class _RegisterViewState extends State<RegisterView> {
+final TextEditingController _emailController = TextEditingController();
+final TextEditingController _nameController = TextEditingController();
+final TextEditingController _passwordController = TextEditingController();
+
+@override
+void initState(){
+  super.initState();
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -21,20 +34,30 @@ class _RegisterViewState extends State<RegisterView> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                decoration: const InputDecoration(
+                  hintText: 'User email here',
+                ),
+                controller: _emailController,
+              ),
+              TextField(
+                decoration: const InputDecoration(
                   hintText: 'Username here',
                 ),
+                controller: _nameController,
               ),
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                decoration: const InputDecoration(
                   hintText: 'Password here',
                 ),
+                controller: _passwordController,
               ),
               const SizedBox(height: 32.0), // Increase space before the button
               ElevatedButton(
                 onPressed: () {
                   // Add your login logic here
+                  //createUser(_nameController.text,_nameController.text,_passwordController.text);
+                  createUser("abc@gmail.com","Jason Strong","12345");
                 },
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,

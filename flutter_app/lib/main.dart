@@ -10,7 +10,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  final bool isLoggedIn = true; // Change to test logged-in route
+  final bool isLoggedIn = false; // Change to test logged-in route
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -20,8 +20,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      //home: isLoggedIn ? const ContactView() : const LoginView(),
-      home: const ContactView(),
+      home: isLoggedIn ? const ContactView() : const LoginView(),
+      //home: const ContactView(),
       routes: {
         contactRoute: (context) => const ContactView(),
         loginRoute : (context) => const LoginView(),
