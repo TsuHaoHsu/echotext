@@ -1,6 +1,9 @@
+import 'package:echotext/components/dialog_popup.dart';
+import 'package:echotext/components/exception.dart';
 import 'package:echotext/constants/routes.dart';
 import 'package:echotext/requests/create_user.dart';
 import 'package:flutter/material.dart';
+import 'dart:developer' as devtools show log;
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -9,18 +12,15 @@ class RegisterView extends StatefulWidget {
   State<RegisterView> createState() => _RegisterViewState();
 }
 
-
-
 class _RegisterViewState extends State<RegisterView> {
-final TextEditingController _emailController = TextEditingController();
-final TextEditingController _nameController = TextEditingController();
-final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
-@override
-void initState(){
-  super.initState();
-}
-
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +54,21 @@ void initState(){
               ),
               const SizedBox(height: 32.0), // Increase space before the button
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   // Add your login logic here
                   //createUser(_nameController.text,_nameController.text,_passwordController.text);
-                  createUser("abc@gmail.com","Jason Strong","12345");
+                  try{
+                  await createUser(
+                    context,
+                    "abc@gmail.com",
+                    "Jason Strong",
+                    "12345",
+                  );
+                  } on EmailAlreadyInUseException {
+                    devtools.log('Caught EmailAlreadyInUseException in register_view');
+                    if (!context.mounted) return;
+                    await dialogPopup(context, "Error occurred", "Email already in use.");
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
