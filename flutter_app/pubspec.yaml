@@ -30,7 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  http: ^0.13.3 # Add this line for HTTP support
+  flutter_riverpod: ^2.0.0
+  flutter_secure_storage: ^8.0.0  # Use the latest version
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -39,7 +41,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  http: ^0.13.3 # Add this line for HTTP support
+  #http: ^0.13.3 # Add this line for HTTP support
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

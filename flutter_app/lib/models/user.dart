@@ -1,14 +1,16 @@
 class User {
   String? id;
-  String name;
+  String? name;
   String email;
-  String password;
+  //bool isVerified;
+  //String password;
 
   User({
     this.id,
     required this.email,
-    required this.name,
-    required this.password,
+    this.name,
+    //required this.password,
+    //required this.isVerified,
   });
   
   factory User.fromJson(Map<String, dynamic> json){
@@ -16,7 +18,8 @@ class User {
       id: json['id'],
       email: json['email'],
       name: json['userName'],
-      password: json['password'],
+      //isVerified: json['isVerified'],
+      //password: json['password'],
     );
   }
 }

@@ -56,18 +56,32 @@ class _RegisterViewState extends State<RegisterView> {
               ElevatedButton(
                 onPressed: () async {
                   // Add your login logic here
-                  //createUser(_nameController.text,_nameController.text,_passwordController.text);
-                  try{
-                  await createUser(
-                    context,
-                    "abc@gmail.com",
-                    "Jason Strong",
-                    "12345",
-                  );
-                  } on EmailAlreadyInUseException {
-                    devtools.log('Caught EmailAlreadyInUseException in register_view');
+                  //createUser(context,_nameController.text,_nameController.text,_passwordController.text,);
+                  try {
+                    await createUser(
+                      context,
+                      "abc@gmail.com",
+                      "Jason Strong",
+                      "12345",
+                    );
                     if (!context.mounted) return;
-                    await dialogPopup(context, "Error occurred", "Email already in use.");
+                    await dialogPopup(
+                        context, "Success!", "Account has been created.");
+                    if (!context.mounted) return;
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      loginRoute,
+                      (Route<dynamic> route) => false,
+                    );
+                  } on EmailAlreadyInUseException {
+                    devtools.log(
+                        'Caught EmailAlreadyInUseException in register_view');
+                    if (!context.mounted) return;
+                    await dialogPopup(
+                        context, "An error occurred", "Email already in use.");
+                  } on ConnectionTimedOutException {
+                    if (!context.mounted) return;
+                    await dialogPopup(
+                        context, "An error occurred", "Connection timed out.");
                   }
                 },
                 style: ElevatedButton.styleFrom(

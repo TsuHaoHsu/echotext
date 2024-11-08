@@ -1,5 +1,12 @@
+import 'package:echotext/components/dialog_popup.dart';
+import 'package:echotext/components/exception.dart';
 import 'package:echotext/constants/routes.dart';
+import 'package:echotext/provider/state_provider.dart';
+import 'package:echotext/requests/login_user.dart';
+import 'package:echotext/services/token_service.dart';
+import 'dart:developer' as devtools show log;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -32,8 +39,45 @@ class _LoginViewState extends State<LoginView> {
           ),
           const SizedBox(height: 32.0), // Increase space before the button
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               // Add your login logic here
+              TokenService tokenService = TokenService();
+              try {
+                await loginUser("abc@gmail.com", "12345");
+                bool hasToken = await tokenService.hasAccessToken();
+
+                if (hasToken) {
+                  // Proceed to the next screen, as user is logged in
+                  if (!context.mounted) return;
+                  Navigator.of(context).pushNamedAndRemoveUntil(contactRoute,(Route<dynamic> route) => false); // wwwwiiiippp
+                } else {
+                  // Handle the case where the token isn't available
+                  if (!context.mounted) return;
+                  await dialogPopup(
+                      context, "An error occurred", "Token not found.");
+                }
+              } on WrongPasswordException {
+                if (!context.mounted) return;
+                await dialogPopup(
+                    context, "An error occurred", "Wrong Password.");
+              } on UserNotFoundException {
+                if (!context.mounted) return;
+                await dialogPopup(
+                    context, "An error occurred", "User does not exist.");
+              } on InvalidEmailException {
+                if (!context.mounted) return;
+                await dialogPopup(
+                    context, "An error occurred", "Invalid Email Format.");
+              } on EmailNotVerifiedException {
+                if (!context.mounted) return;
+                await dialogPopup(context, "Email not verified",
+                    "Please check your inbox for verification link.");
+              } on ConnectionTimedOutException {
+                if (!context.mounted) return;
+                await dialogPopup(context, "An error occurred",
+                    "Connection timed out, Please try again later.");
+              }
+
             },
             style: ElevatedButton.styleFrom(
               foregroundColor: Colors.white,

@@ -1,12 +1,16 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
+from login_verification import create_login_token
+from fastapi.responses import JSONResponse
 from typing import Optional
-from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from pymongo import MongoClient
 from typing import List
 from motor.motor_asyncio import AsyncIOMotorClient
 import bcrypt
+import jwt
 from db import database  # Import the database from db.py
+from datetime import datetime
+
 
 app = FastAPI()
 #MONGODB_URL = "mongodb://localhost:27017"
@@ -14,11 +18,21 @@ MONGODB_URL = "mongodb://192.168.0.195:27017"
 client = AsyncIOMotorClient(MONGODB_URL)
 database = client["Echo_Text_Local"]
 
-
 class User(BaseModel):
     name: str
-    email: str
+    email: EmailStr
     password: str
+    isVerified: bool = False
+    password_version: int = 1
+    
+class UserQuery(BaseModel):
+    name: str
+    email: EmailStr
+    
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+    #isVerified: bool
     
 class Message(BaseModel):
     message_id: Optional[str]
@@ -47,9 +61,9 @@ async def create_user(user: User):
     user_data = user.dict() # converts user to dictionary format
     user_data["password"] = hashed_password.decode()
     
-    result = await database["users"].insert_one(user.dict()) #convert user from python object to dictionary format
+    result = await database["users"].insert_one(user_data) #convert user from python object to dictionary format
     if result.inserted_id: #if there's result
-        return {"id": str(result.inserted_id), "name": user.name, "email": user.email}
+        return {"id": str(result.inserted_id), "name": user.name, "email": user.email, "isVerified": user.isVerified}
     raise HTTPException(status_code=500, detail="User could not be created.")
 
 @app.post("/message/")
@@ -78,6 +92,49 @@ async def get_user(user_id: str):
         return user
     raise HTTPException(status_code=404, detail="User not found")
 
+@app.post("/user/login")
+async def login_user(user: UserLogin):
+    user_record = await database["users"].find_one({"email": user.email})
+    
+    
+    try:
+        if user_record:
+            
+            #if user_record["password"] != user.password:
+            if not bcrypt.checkpw(user.password.encode(), user_record["password"].encode()):
+                raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect Password"
+                )
+            
+            elif not user_record["isVerified"]:
+                raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email not yet verified"
+                )
+            
+            elif bcrypt.checkpw(user.password.encode(), user_record["password"].encode()) and user_record["isVerified"]:
+                
+                tokens: create_login_token(str(user_record["_id"]), user_record["email"], user_record["password_version"])
+                
+                return {
+                    "message": "Success",
+                    "id": str(user_record["_id"]),  # Ensure you're returning the user's ID
+                    "name": user_record["name"],
+                    "isVerified": user_record["isVerified"],
+                    "access_token": tokens["access_token"],
+                    "refresh_token": tokens["refresh_token"],
+                }
+                
+                
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User does not exist"
+        )
+            
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/users/")
 async def get_all_users():
 
@@ -101,3 +158,17 @@ async def get_messages(sender_id: str = None, receiver_id: str = None):
         messages.append(message)
     
     return messages
+
+'''
+@app.get("/verify/{token}")
+async def verify_email(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        email = payload["email"]
+        # Here you can update your MongoDB to mark the user as verified
+        database["users"].update_one({"email": email}, {"$set": {"isVerified": True}})
+        return JSONResponse(content={"message": "Email verified successfully."}, status_code=200)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Token expired")
+    except jwt.JWTError:
+        raise HTTPException(status_code=400, detail="Invalid token")'''
