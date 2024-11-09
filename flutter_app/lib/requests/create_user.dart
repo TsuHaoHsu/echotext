@@ -36,7 +36,6 @@ Future<void> createUser(
       //isVerified: false,
     );
     devtools.log("User ${newUser.name} created successfully: id-${newUser.id}");
-    devtools.log("User ${userData['token']} token successfully created: id-${userData['token']}");
   } else {
     final errorData = jsonDecode(response.body);
     devtools.log('Full error data: ${errorData.toString()}');

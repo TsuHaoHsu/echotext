@@ -11,9 +11,8 @@ class ContactPopup extends StatefulWidget {
 class _ContactPopupState extends State<ContactPopup> {
   late TextEditingController _controller;
 
-
   @override
-  void initState(){
+  void initState() {
     super.initState();
     _controller = TextEditingController();
   }
@@ -39,10 +38,10 @@ class _ContactPopupState extends State<ContactPopup> {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  decoration: const InputDecoration(hintText: 'Enter Contact Name'),
-                  
+                  decoration:
+                      const InputDecoration(hintText: 'Enter Contact Name'),
                 ),
-                )
+              )
             ],
           ),
         ],

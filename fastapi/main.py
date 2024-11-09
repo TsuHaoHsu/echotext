@@ -10,9 +10,12 @@ import bcrypt
 import jwt
 from db import database  # Import the database from db.py
 from datetime import datetime
+from login_verification import router as auth_router
 
 
 app = FastAPI()
+app.include_router(auth_router)
+
 #MONGODB_URL = "mongodb://localhost:27017"
 MONGODB_URL = "mongodb://192.168.0.195:27017"
 client = AsyncIOMotorClient(MONGODB_URL)
@@ -115,7 +118,7 @@ async def login_user(user: UserLogin):
             
             elif bcrypt.checkpw(user.password.encode(), user_record["password"].encode()) and user_record["isVerified"]:
                 
-                tokens: create_login_token(str(user_record["_id"]), user_record["email"], user_record["password_version"])
+                tokens = create_login_token(str(user_record["_id"]), user_record["email"], user_record["password_version"])
                 
                 return {
                     "message": "Success",

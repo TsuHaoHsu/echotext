@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 
 class TokenService {
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
@@ -40,5 +41,36 @@ class TokenService {
   Future<bool> hasRefreshToken() async {
     String? refreshToken = await _secureStorage.read(key: 'refresh_token');
     return refreshToken != null;
+  }
+
+  Future<bool> hasAccessTokenExpired() async {
+    String? accessToken = await getAccessToken();
+
+    if (accessToken == null) {
+      return true;
+    }
+
+    try {
+      // Decode the token
+      final jwt = JWT.decode(accessToken);
+      
+      // Get the expiration date from the token
+      final expiryDate = DateTime.fromMillisecondsSinceEpoch(jwt.payload['exp'] * 1000);
+      return DateTime.now().isAfter(expiryDate);
+    } catch (e) {
+      // If decoding fails (invalid token), assume it's expired
+      return true;
+    }
+  }
+
+  Future<bool> isTokenStillValid() async {
+    bool tokenExists = await hasAccessToken();
+
+    if(tokenExists){
+      return !await hasAccessTokenExpired();
+    }
+
+    return false;
+
   }
 }
