@@ -59,7 +59,6 @@ class _RegisterViewState extends State<RegisterView> {
                   //createUser(context,_nameController.text,_nameController.text,_passwordController.text,);
                   try {
                     await createUser(
-                      context,
                       "abc@gmail.com",
                       "Jason Strong",
                       "12345",

@@ -1,13 +1,17 @@
 import 'package:echotext/components/contact_popup.dart';
 import 'package:echotext/components/friend_search_popup.dart';
 import 'package:echotext/constants/routes.dart';
+import 'package:echotext/requests/get_friend_list.dart';
 import 'package:echotext/services/auth_service.dart';
 import 'package:echotext/services/token_service.dart';
+import 'package:echotext/services/user_service.dart';
+import 'package:echotext/views/login_view.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
 
 class ContactView extends StatefulWidget {
-  const ContactView({super.key});
+  ContactView({super.key});
+  final String? userId = UserService.userId;
 
   @override
   State<ContactView> createState() => _ContactViewState();
@@ -15,11 +19,23 @@ class ContactView extends StatefulWidget {
 
 class _ContactViewState extends State<ContactView> {
   final AuthService _authService = AuthService();
+  late Future<List<Map<String, dynamic>>> _friendList;
 
   @override
   void initState() {
     super.initState();
     _checkAccessToken();
+
+    _friendList = Future.value([]);
+
+    if (widget.userId != null) {
+      _friendList = getFriendList(widget.userId!);
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _authService.logout();
+        Navigator.of(context).pushReplacementNamed(loginRoute);
+      });
+    }
   }
 
   Future<void> _checkAccessToken() async {
@@ -28,63 +44,74 @@ class _ContactViewState extends State<ContactView> {
     }
   }
 
-  final List<String> contacts = [
-    "Jason",
-    "Hank",
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Contacts'),
-          actions: [
-            IconButton(
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled:
-                      true, // Ensures the sheet can have a custom height,
-                  builder: (BuildContext context) {
-                    return FriendSearchPopup();
-                  },
-                );
-              },
-              icon: const Icon(Icons.person_add_alt_1),
-            ),
-            PopupMenuButton<String>(
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'Sign Out',
-                  child: Text('Sign Out'),
-                ),
-              ],
-              onSelected: (String result) {
-                if (result == 'Sign Out') {
-                  devtools.log("User logging out...");
-                  _authService.logout();
-                  Navigator.of(context).pushReplacementNamed(loginRoute);
-                }
-              },
-            )
-          ],
-        ),
-        body: ListView.builder(
-            itemCount: contacts.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                leading: const Icon(Icons.person),
-                title: Text(contacts[index]),
-                onTap: () => {
-                  // open each contact
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return ContactPopup(contactName: contacts[index]);
-                    },
-                  )
+      appBar: AppBar(
+        title: const Text('Friends'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled:
+                    true, // Ensures the sheet can have a custom height,
+                builder: (BuildContext context) {
+                  return FriendSearchPopup();
                 },
               );
-            }));
+            },
+            icon: const Icon(Icons.person_add_alt_1),
+          ),
+          PopupMenuButton<String>(
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'Sign Out',
+                child: Text('Sign Out'),
+              ),
+            ],
+            onSelected: (String result) {
+              if (result == 'Sign Out') {
+                devtools.log("User logging out...");
+                _authService.logout();
+                Navigator.of(context).pushReplacementNamed(loginRoute);
+              }
+            },
+          )
+        ],
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _friendList,
+          builder: (context, snapshot) {
+            switch (snapshot.connectionState) {
+              case (ConnectionState.waiting):
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              case (ConnectionState.done):
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('No friends found'));
+                } else {
+                  final friendList = snapshot.data!;
+                  return ListView.builder(
+                      itemCount: friendList.length,
+                      itemBuilder: (context, index) {
+                        final friend = friendList[index];
+                        return ListTile(
+                          leading: const Icon(Icons.person),
+                          title: Text(friend['name'] ?? 'Unknown id'),
+                          onTap: () {},
+                        );
+                      });
+                }
+              default:
+                return const Center(child: Text('Unexpected Error'));
+            }
+          }),
+    );
   }
 }

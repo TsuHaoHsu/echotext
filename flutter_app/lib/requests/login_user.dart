@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:echotext/models/user.dart';
 import 'package:echotext/services/token_service.dart';
 
-Future<void> loginUser(
+Future<String> loginUser(
   String email,
   String password,
 ) async {
@@ -34,10 +34,12 @@ Future<void> loginUser(
       );
       devtools
           .log("User ${currUser.email} login successfully: id-${currUser.id}");
+
       final accessToken = userData['access_token'];
       final refreshToken = userData['refresh_token'];
       await tokenService.storeAccessToken(accessToken);
       await tokenService.storeRefreshToken(refreshToken);
+      return currUser.id!;
     } else {
       final errorData = jsonDecode(response.body);
       devtools.log('Failed to login: ${response.statusCode} ${response.body}');
@@ -62,4 +64,6 @@ Future<void> loginUser(
   } catch (e) {
     rethrow;
   }
+  // Add a throw statement at the end in case the function reaches here.
+  throw Exception("Unexpected error during login");
 }

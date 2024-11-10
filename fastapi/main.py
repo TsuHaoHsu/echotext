@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 from pymongo import MongoClient
-from typing import List
+from typing import List, Dict
 from motor.motor_asyncio import AsyncIOMotorClient
 import bcrypt
 import jwt
@@ -44,6 +44,18 @@ class Message(BaseModel):
     content: Optional[str]
     timestamp: datetime
     imageUrl: Optional[str]
+    type: str
+    edited: bool
+    edited_at: Optional[datetime] = None
+    reactions: Dict[str,int] = {}
+    read_status: bool
+
+class Friendship(BaseModel):
+    user1_id: str
+    user2_id: str
+    status: str  # "pending", "accepted", "rejected"
+    initiated_at: datetime
+    accepted_at: Optional[datetime] = None
 
 @app.get("/test/")
 async def test_connection():
@@ -84,6 +96,11 @@ async def create_message(message: Message):
             "content": message.content,
             "timestamp": message.timestamp,
             "imageurl": message.imageUrl,
+            "type": message.type,
+            "edited": message.edited, # WIP
+            "edited_at": message.edited_at, # WIP
+            "reactions": message.reactions, # WIP
+            "read_status": message.read_status,
         }
     raise HTTPException(status_code=500, detail="Message could not be created.")
 
@@ -146,21 +163,151 @@ async def get_all_users():
         user["_id"] = str(user["_id"])
     return users
     
-@app.get("/messages/", response_model=List[Message])
-async def get_messages(sender_id: str = None, receiver_id: str = None):
-    query = {}
+@app.post("/send-message/")
+async def send_message(message: Message):
     
-    if sender_id:
-        query["sender_id"] = sender_id
-    if receiver_id:
-        query["receiver_id"] = receiver_id
+    result = await database["message"].insert_one(message.dict())
     
-    messages = []
-    async for message in database["message"].find(query):
-        message["message_id"] = str(message["_id"])
-        messages.append(message)
+    return {"message_id": str(result.inserted_id), "status": "sent"}
     
-    return messages
+@app.get("/message-history/", response_model=List[Message])
+async def get_message_history(sender_id: str, receiver_id: str):
+    
+    messages = await database["message"].find({
+        "$or": [
+            {"sender_id": sender_id, "receiver_id": receiver_id},
+            {"receiver_id": receiver_id, "sender_id": sender_id},
+        ]
+    }).sort("timestamp", -1).limit(20).to_list(None)
+    
+    return {"messages": messages}
+
+@app.post("/friend-request/")
+async def send_friend_request(user1_id: str, user2_id: str):
+    
+    
+    friendship = {
+        "user1_id": user1_id,
+        "user2_id": user2_id,
+        "status": "pending",  # "pending", "accepted", "rejected"
+        "initiated_at": datetime.now(),
+    }
+    
+    result = await database["friendship"].insert_one(friendship)
+    
+    if result.inserted_id:
+        return {"friendship_id": str(result.inserted_id), "status": "pending"}
+    raise HTTPException(status_code=500, detail="failed to send friend request.")
+
+@app.post("/accept-friend-request/")
+async def accept_friend_request(friendship_id: str):
+    
+    result = await database["friendship"].update_one(
+        {"id_": friendship_id,"status": "pending"},
+        {"$set": {"status": "accepted", "accepted_at": datetime.now()}}
+    )
+    if result.modified_count:
+        return {"status": "accepted"}
+    raise HTTPException(status_code=400, detail="Friend request not found or already accepted.")
+
+@app.post("/reject-friend-request/")
+async def reject_friend_request(friendship_id: str):
+    
+    result = await database["friendship"].delete_one(
+        {"id_": friendship_id, "status": "pending"}
+    )
+    if result.deleted_count:
+        return {"status": "rejected"}
+    raise HTTPException(status_code=404, detail="Friend request not found or already rejected.")
+
+@app.get("/friend-list/")
+async def get_friend_list(user_id: str):
+    
+    pipeline = [
+        {
+            "$match": {
+                "$or": [
+                    {"user1_id": user_id, "status": "accepted"},
+                    {"user2_id": user_id, "status": "accepted"}
+                ]
+            }
+        },
+        {
+            "$lookup": {
+                "from": "users",  # The collection to join with
+                "localField": "user1_id",  # Field from the friendship document
+                "foreignField": "user_id",  # Field from the user document
+                "as": "user1_details"  # Output field to store user details
+            }
+        },
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "user2_id",
+                "foreignField": "user_id",
+                "as": "user2_details"
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "friend_details": {
+                    "$concatArrays": ["$user1_details", "$user2_details"]
+                }
+            }
+        },
+        {
+            "$unwind": "$friend_details"
+        },
+        {
+            "$project": {
+                "user_id": "$friend_details.user_id",
+                "name": "$friend_details.name"
+            }
+        }
+    ]
+    
+    friends = await database["friendship"].aggregate(pipeline).to_list(None)
+    friend_list = []
+
+    for friendship in friends:
+        # Collect both user_id and name for each friend
+        if friendship["user1_id"] != user_id:
+            friend_list.append({
+                "user_id": friendship["user1_id"],
+                "name": friendship["user1_name"]
+            })
+        if friendship["user2_id"] != user_id:
+            friend_list.append({
+                "user_id": friendship["user2_id"],
+                "name": friendship["user2_name"]
+            })
+
+    return {"friends": friend_list}
+    
+    '''
+    friends = await database["friendship"].find({
+        "$or": [
+            {"user1_id": user_id, "status": "accepted"},
+            {"user2_id": user_id, "status": "accepted"}
+        ]
+    }).to_list(None)
+    
+    friend_ids = []
+    
+    for friendship in friends:
+        if friendship["user1_id"] == user_id:
+            friend_ids.append(friendship["user2_id"])
+        else:
+            friend_ids.append(friendship["user1_id"])
+            
+    friend_names = []
+    
+    for friendship in friends:
+            
+    return {"friends_ids": friend_ids}
+    '''
+    
 
 '''
 @app.get("/verify/{token}")

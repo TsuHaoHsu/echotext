@@ -1,12 +1,11 @@
 import 'dart:convert';
 import 'package:echotext/components/exception.dart';
+import 'package:echotext/constants/uri.dart';
 import 'package:echotext/models/user.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as devtools show log;
-import 'package:flutter/material.dart';
 
 Future<void> createUser(
-  BuildContext context,
   String email,
   String name,
   String password,
@@ -14,7 +13,7 @@ Future<void> createUser(
 ) async {
   try{
   final response = await http.post(
-    Uri.parse("http://192.168.0.195:8000/user/"),
+    Uri.parse("${uri}user/"),
     headers: <String, String>{
       'Content-Type': 'application/json',
     },

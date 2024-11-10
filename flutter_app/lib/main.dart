@@ -28,8 +28,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      //ome: ? const ContactView() : const LoginView(),
-      home: FutureBuilder(
+      home: FutureBuilder<bool>(
           future: _checkAccessToken(),
           builder: (context, snapshot) {
             switch (snapshot.connectionState) {
@@ -37,7 +36,7 @@ class MyApp extends StatelessWidget {
                 return const CircularProgressIndicator();
               case ConnectionState.done:
                 if (snapshot.hasData && snapshot.data == true) {
-                  return const ContactView();
+                  return ContactView();
                 } else {
                   return const LoginView();
                 }
@@ -51,7 +50,7 @@ class MyApp extends StatelessWidget {
           }),
       //home: const ContactView(),
       routes: {
-        contactRoute: (context) => const ContactView(),
+        contactRoute: (context) => ContactView(),
         loginRoute: (context) => const LoginView(),
         registerRoute: (context) => const RegisterView(),
       },
