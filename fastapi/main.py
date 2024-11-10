@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Query
 from login_verification import create_login_token
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -18,6 +18,7 @@ app.include_router(auth_router)
 
 #MONGODB_URL = "mongodb://localhost:27017"
 MONGODB_URL = "mongodb://192.168.0.195:27017"
+
 client = AsyncIOMotorClient(MONGODB_URL)
 database = client["Echo_Text_Local"]
 
@@ -29,8 +30,10 @@ class User(BaseModel):
     password_version: int = 1
     
 class UserQuery(BaseModel):
+    user_id: str
     name: str
-    email: EmailStr
+    profile_picture: str = ""
+    
     
 class UserLogin(BaseModel):
     email: EmailStr
@@ -77,8 +80,26 @@ async def create_user(user: User):
     user_data["password"] = hashed_password.decode()
     
     result = await database["users"].insert_one(user_data) #convert user from python object to dictionary format
+    
     if result.inserted_id: #if there's result
-        return {"id": str(result.inserted_id), "name": user.name, "email": user.email, "isVerified": user.isVerified}
+        
+        # add user to user_list
+        try:
+            await database["user_list"].insert_one({
+                "user_id": str(result.inserted_id),
+                "name": user.name,
+                "profile_picture": None
+            })
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        
+        return {
+            "id": str(result.inserted_id),
+            "name": user.name,
+            "email": user.email,
+            "isVerified": user.isVerified
+        }
+        
     raise HTTPException(status_code=500, detail="User could not be created.")
 
 @app.post("/message/")
@@ -104,13 +125,24 @@ async def create_message(message: Message):
         }
     raise HTTPException(status_code=500, detail="Message could not be created.")
 
-@app.get("/user/{user_id}")
-async def get_user(user_id: str):
-    user = await database["users"].find_one({"_id": user_id})
-    if user:
-        user["_id"] = str(user["_id"])
-        return user
-    raise HTTPException(status_code=404, detail="User not found")
+@app.get("/user-list/", response_model=List[UserQuery])
+async def get_user_list(query: str = Query(..., min_length=1)):
+    
+    users_cursor = database["user_list"].find({
+        "$or": [
+            {"name": {"$regex": query, "$options": "i"}},
+        ]
+    })
+    
+    users = await users_cursor.to_list(length=20)
+    
+    if not users:
+        raise HTTPException(status_code=404, detail = "No users found matching the query. ")
+    
+    return [
+        {"user_id": str(user["user_id"]), "name": user["name"], "profile_picture": user.get("profile_picture", "")}
+        for user in users
+    ]
 
 @app.post("/user/login")
 async def login_user(user: UserLogin):
@@ -154,7 +186,7 @@ async def login_user(user: UserLogin):
             
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
+'''
 @app.get("/users/")
 async def get_all_users():
 
@@ -162,7 +194,7 @@ async def get_all_users():
     for user in users:
         user["_id"] = str(user["_id"])
     return users
-    
+''' 
 @app.post("/send-message/")
 async def send_message(message: Message):
     

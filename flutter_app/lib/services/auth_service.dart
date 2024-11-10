@@ -40,7 +40,7 @@ class AuthService {
 
   Future<Map<String,dynamic>?> _refreshAccessTokenFromAPI(String refreshToken) async {
 
-    final String apiUrl = "http://192.168.0.195:8000/user/refresh-token";
+    const String apiUrl = "http://192.168.0.195:8000/user/refresh-token";
 
     final response = await http.post(
       Uri.parse(apiUrl),

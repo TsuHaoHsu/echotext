@@ -1,5 +1,5 @@
 import 'package:echotext/components/contact_popup.dart';
-import 'package:echotext/components/friend_search_popup.dart';
+import 'package:echotext/components/user_search_popup.dart';
 import 'package:echotext/constants/routes.dart';
 import 'package:echotext/requests/get_friend_list.dart';
 import 'package:echotext/services/auth_service.dart';
@@ -72,7 +72,7 @@ class _ContactViewState extends State<ContactView> {
             ],
             onSelected: (String result) {
               if (result == 'Sign Out') {
-                devtools.log("User logging out...");
+                devtools.log("User ${widget.userId} logging out...");
                 _authService.logout();
                 Navigator.of(context).pushReplacementNamed(loginRoute);
               }
