@@ -29,13 +29,13 @@ class _FriendSearchPopupState extends State<FriendSearchPopup> {
 
   void _fetchUserList() async {
     try{
-      List<Map<String, dynamic>> users = await getUserList();
+      List<Map<String, dynamic>> users = await getUserList("");
       setState((){
         _userList = users;
         _filteredUserList = users; // Initally, show all users
       });
-    }catch(e){
-      devtools.log("Failed to get user list");
+    } catch (e) {
+    devtools.log("Failed to get user list: $e");
     }
   }
 
@@ -73,6 +73,20 @@ class _FriendSearchPopupState extends State<FriendSearchPopup> {
                 ),
               ],
             ),
+            Expanded(
+                  child: ListView.builder(
+                    itemCount: _filteredUserList.length,
+                    itemBuilder: (context, index){
+                      final filteredUsers = _filteredUserList[index];
+                      return ListTile(
+                        title: Text(filteredUsers['name'] ?? 'Unknown User'),
+                        subtitle: Text(filteredUsers['profile_picture'] ?? 'https://imgur.com/OXA0Aej'),
+                        onTap: () {
+                          
+                        },
+                      );
+                  }),
+                )
           ],
         ),
       ),

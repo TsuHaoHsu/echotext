@@ -126,7 +126,7 @@ async def create_message(message: Message):
     raise HTTPException(status_code=500, detail="Message could not be created.")
 
 @app.get("/user-list/", response_model=List[UserQuery])
-async def get_user_list(query: str = Query(..., min_length=1)):
+async def get_user_list(query: Optional[str] = Query(None)):
     
     users_cursor = database["user_list"].find({
         "$or": [
@@ -140,7 +140,11 @@ async def get_user_list(query: str = Query(..., min_length=1)):
         raise HTTPException(status_code=404, detail = "No users found matching the query. ")
     
     return [
-        {"user_id": str(user["user_id"]), "name": user["name"], "profile_picture": user.get("profile_picture", "")}
+        {
+            "user_id": str(user["user_id"]),
+            "name": user["name"],
+            "profile_picture": user.get("profile_picture", "") or "",
+        }
         for user in users
     ]
 

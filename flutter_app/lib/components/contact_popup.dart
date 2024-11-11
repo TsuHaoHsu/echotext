@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ContactPopup extends StatefulWidget {
-  final String contactName;
-  const ContactPopup({super.key, required this.contactName});
+  final String userName;
+  const ContactPopup({super.key, required this.userName});
 
   @override
   State<ContactPopup> createState() => _ContactPopupState();
