@@ -97,24 +97,6 @@ class _FriendSearchPopupState extends State<FriendSearchPopup> {
                             : NetworkImage(profilePictureUrl) as ImageProvider,
                       ),
                       title: Text(filteredUsers['name'] ?? 'Unknown User'),
-                      trailing: IconButton(
-                        onPressed: () async {
-                          devtools.log(
-                              "Friend request from ${UserService.userId!} to ${filteredUsers['user_id']}");
-                          bool sc = await addFriend(
-                              UserService.userId!, filteredUsers['user_id']);
-
-                          if (!context.mounted) return;
-                          if (sc == true) {
-                            dialogPopup(
-                                context, "Success", "Friend request sent");
-                          } else {
-                            dialogPopup(
-                                context, "Success", "Friend request canceled");
-                          }
-                        },
-                        icon: const Icon(Icons.person_add_sharp),
-                      ),
                       onTap: () {
                         showModalBottomSheet(
                             context: context,

@@ -53,10 +53,6 @@ class Message(BaseModel):
     reactions: Dict[str,int] = {}
     read_status: bool
 
-class FriendRequest(BaseModel):
-    user1_id:str
-    user2_id:str
-
 class Friendship(BaseModel):
     user1_id: str
     user2_id: str
@@ -194,6 +190,11 @@ async def login_user(user: UserLogin):
             
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get("/friendship-query/")
+async def get_friendship(userId : str):
+    
+    await database['friendship'].find_one['']
 '''
 @app.get("/users/")
 async def get_all_users():
@@ -223,13 +224,13 @@ async def get_message_history(sender_id: str, receiver_id: str):
     return {"messages": messages}
 
 @app.post("/friend-request/")
-async def add_friend(friend_request: FriendRequest):
+async def add_friend(user1_id: str, user2_id: str):
     
     # Check if a pending request already exists between these two users
     existing_request = await database["friendship"].find_one({
         "$or": [
-            {"user1_id": friend_request.user1_id, "user2_id": friend_request.user2_id, "status": "pending"},
-            {"user1_id": friend_request.user2_id, "user2_id": friend_request.user1_id, "status": "pending"}
+            {"user1_id": user1_id, "user2_id": user2_id, "status": "pending"},
+            {"user1_id": user2_id, "user2_id": user1_id, "status": "pending"}
         ]
     })
     
@@ -237,15 +238,15 @@ async def add_friend(friend_request: FriendRequest):
         # If a pending request exists, delete it (cancel the request)
         await database["friendship"].delete_one({
             "$or": [
-                {"user1_id": friend_request.user1_id, "user2_id": friend_request.user2_id, "status": "pending"},
-                {"user1_id": friend_request.user2_id, "user2_id": friend_request.user1_id, "status": "pending"}
+                {"user1_id": user1_id, "user2_id": user2_id, "status": "pending"},
+                {"user1_id": user2_id, "user2_id": user1_id, "status": "pending"}
             ]
         })
         return {"message": "Friend request cancelled."}
     
     friendship = {
-        "user1_id": friend_request.user1_id,
-        "user2_id": friend_request.user2_id,
+        "user1_id": user1_id,
+        "user2_id": user2_id,
         "status": "pending",  # "pending", "accepted", "rejected"
         "initiated_at": datetime.now(),
     }
@@ -254,7 +255,7 @@ async def add_friend(friend_request: FriendRequest):
     
     if result.inserted_id:
         return {
-            "friendship_id": str(result.inserted_id), "status": "pending", "receiver": friend_request.user2_id
+            "friendship_id": str(result.inserted_id), "status": "pending", "receiver": user2_id
         }
     raise HTTPException(status_code=500, detail="failed to send friend request.")
 
