@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:echotext/constants/uri.dart';
 import 'package:http/http.dart' as http;
-import 'dart:developer' as devtools show log;
+//import 'dart:developer' as devtools show log;
 
 Future<List<Map<String, dynamic>>> getUserList(String searchQuery) async {
   final response = await http.get(
@@ -10,7 +10,7 @@ Future<List<Map<String, dynamic>>> getUserList(String searchQuery) async {
   );
   if (response.statusCode == 200) {
     try {
-      devtools.log("Response body: ${response.body}");
+      //devtools.log("Response body: ${response.body}");
       final List<dynamic> data = jsonDecode(response.body);
       
       // Convert the dynamic list to a List<Map<String, dynamic>> explicitly

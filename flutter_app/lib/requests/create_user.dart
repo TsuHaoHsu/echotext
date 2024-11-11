@@ -11,46 +11,48 @@ Future<void> createUser(
   String password,
   //bool isVerified,
 ) async {
-  try{
-  final response = await http.post(
-    Uri.parse("${uri}user/"),
-    headers: <String, String>{
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode(
-      <String, String>{
-        'name': name,
-        'email': email,
-        'password': password,
+  try {
+    final response = await http.post(
+      Uri.parse("${uri}user/"),
+      headers: <String, String>{
+        'Content-Type': 'application/json',
       },
-    ),
-  );
-  if (response.statusCode == 200) {
-    final userData = jsonDecode(response.body);
-    final newUser = User(
-      id: userData['id'],
-      email: email,
-      name: name,
-      //password: password,
-      //isVerified: false,
+      body: jsonEncode(
+        <String, String>{
+          'name': name,
+          'email': email,
+          'password': password,
+        },
+      ),
     );
-    devtools.log("User ${newUser.name} created successfully: id-${newUser.id}");
-  } else {
-    final errorData = jsonDecode(response.body);
-    devtools.log('Full error data: ${errorData.toString()}');
-
-    if (errorData['detail'].trim() == 'User with this email already exists.') {
-      throw EmailAlreadyInUseException();
+    if (response.statusCode == 200) {
+      final userData = jsonDecode(response.body);
+      final newUser = User(
+        id: userData['id'],
+        email: email,
+        name: name,
+        //password: password,
+        //isVerified: false,
+      );
+      devtools
+          .log("User ${newUser.name} created successfully: id-${newUser.id}");
     } else {
-      devtools.log(errorData.toString());
-      throw ConnectionTimedOutException(); // Optionally throw a general error
+      final errorData = jsonDecode(response.body);
+      devtools.log('Full error data: ${errorData.toString()}');
+
+      if (errorData['detail'].trim() ==
+          'User with this email already exists.') {
+        throw EmailAlreadyInUseException();
+      } else {
+        devtools.log(errorData.toString());
+        throw ConnectionTimedOutException(); // Optionally throw a general error
+      }
     }
-  }} catch (e) {
+  } catch (e) {
     if (e is! EmailAlreadyInUseException) {
-        devtools.log('Error: ${e.toString()}');
-        throw ConnectionTimedOutException();
-    }
-    else{
+      devtools.log('Error: ${e.toString()}');
+      throw ConnectionTimedOutException();
+    } else {
       rethrow;
     }
   }

@@ -57,7 +57,7 @@ class _ContactViewState extends State<ContactView> {
                 isScrollControlled:
                     true, // Ensures the sheet can have a custom height,
                 builder: (BuildContext context) {
-                  return FriendSearchPopup();
+                  return const FriendSearchPopup();
                 },
               );
             },

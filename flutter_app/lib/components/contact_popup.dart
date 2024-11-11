@@ -1,8 +1,16 @@
+import 'package:echotext/components/dialog_popup.dart';
+import 'package:echotext/requests/add_friend.dart';
+import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';
+import 'dart:developer' as devtools show log;
 
 class ContactPopup extends StatefulWidget {
+  final String userId;
   final String userName;
-  const ContactPopup({super.key, required this.userName});
+  final String profilePicture;
+  
+  const ContactPopup(
+      {super.key, required this.userName, required this.profilePicture, required this.userId, });
 
   @override
   State<ContactPopup> createState() => _ContactPopupState();
@@ -10,6 +18,9 @@ class ContactPopup extends StatefulWidget {
 
 class _ContactPopupState extends State<ContactPopup> {
   late TextEditingController _controller;
+  late String name = widget.userName;
+  late String pic = widget.profilePicture;
+  late String userId = widget.userId;
 
   @override
   void initState() {
@@ -31,17 +42,36 @@ class _ContactPopupState extends State<ContactPopup> {
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 30,
-                backgroundImage: NetworkImage('https://imgur.com/OXA0Aej.jpg'),
+                backgroundImage: pic.startsWith('http')
+                    ? NetworkImage(pic)
+                    : AssetImage(pic) as ImageProvider,
+              ),
+              const SizedBox(
+                width: 16,
               ),
               Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration:
-                      const InputDecoration(hintText: 'Enter Contact Name'),
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                  ),
                 ),
-              )
+              ),
+              IconButton(
+                onPressed: () async {
+                            devtools.log("Friend request from ${UserService.userId!} to $name");
+                            bool sc = await addFriend(UserService.userId!, userId);
+                            if(!context.mounted) return;
+                            if(sc == true){
+                              dialogPopup(context, "Success", "Friend request sent");
+                            } else{
+                              dialogPopup(context, "Success", "Friend request canceled");
+                            }
+                          },
+                icon: const Icon(Icons.person_add_sharp),
+              ),
             ],
           ),
         ],
