@@ -2,6 +2,8 @@ import 'package:echotext/components/dialog_popup.dart';
 import 'package:echotext/components/exception.dart';
 import 'package:echotext/constants/routes.dart';
 import 'package:echotext/provider/state_provider.dart';
+import 'package:echotext/requests/get_friend_list.dart';
+import 'package:echotext/requests/get_user_list.dart';
 import 'package:echotext/requests/login_user.dart';
 import 'package:echotext/services/token_service.dart';
 import 'package:echotext/services/user_service.dart';
@@ -51,8 +53,9 @@ class _LoginViewState extends State<LoginView> {
 
                 if (hasToken) {
                   // Proceed to the next screen, as user is logged in
+                  await getFriendList(currUserID);
                   if (!context.mounted) return;
-                  Navigator.of(context).pushNamedAndRemoveUntil(contactRoute,(Route<dynamic> route) => false); // wwwwiiiippp
+                  Navigator.of(context).pushNamedAndRemoveUntil(contactRoute,(Route<dynamic> route) => false);
                 } else {
                   // Handle the case where the token isn't available
                   if (!context.mounted) return;

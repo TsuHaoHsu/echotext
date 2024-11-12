@@ -19,23 +19,20 @@ class ContactView extends StatefulWidget {
 
 class _ContactViewState extends State<ContactView> {
   final AuthService _authService = AuthService();
-  late Future<List<Map<String, dynamic>>> _friendList;
+  List<Map<String, dynamic>> _friendList = [];
 
   @override
   void initState() {
     super.initState();
     _checkAccessToken();
+    _fetchFriendList();
+  }
 
-    _friendList = Future.value([]);
-
-    if (widget.userId != null) {
-      _friendList = getFriendList(widget.userId!);
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _authService.logout();
-        Navigator.of(context).pushReplacementNamed(loginRoute);
-      });
-    }
+  Future<void> _fetchFriendList() async {
+    await UserService.fetchFriendList();
+    setState(() {
+      _friendList = UserService.friendList ?? [];
+    });
   }
 
   Future<void> _checkAccessToken() async {
@@ -80,38 +77,19 @@ class _ContactViewState extends State<ContactView> {
           )
         ],
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-          future: _friendList,
-          builder: (context, snapshot) {
-            switch (snapshot.connectionState) {
-              case (ConnectionState.waiting):
-                return const Center(
-                  child: CircularProgressIndicator(),
+      body: _friendList.isEmpty
+          ? const Center(child: Text('No friends found'))
+          : ListView.builder(
+              itemCount: _friendList.length,
+              itemBuilder: (context, index) {
+                final friend = _friendList[index];
+                return ListTile(
+                  leading: const Icon(Icons.person),
+                  title: Text(friend['name'] ?? 'Unknown id'),
+                  onTap: () {},
                 );
-              case (ConnectionState.done):
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('No friends found'));
-                } else {
-                  final friendList = snapshot.data!;
-                  return ListView.builder(
-                      itemCount: friendList.length,
-                      itemBuilder: (context, index) {
-                        final friend = friendList[index];
-                        return ListTile(
-                          leading: const Icon(Icons.person),
-                          title: Text(friend['name'] ?? 'Unknown id'),
-                          onTap: () {},
-                        );
-                      });
-                }
-              default:
-                return const Center(child: Text('Unexpected Error'));
-            }
-          }),
+              },
+            ),
     );
   }
 }

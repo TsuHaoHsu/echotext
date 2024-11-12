@@ -1,5 +1,6 @@
 import 'package:echotext/components/dialog_popup.dart';
 import 'package:echotext/requests/add_friend.dart';
+import 'package:echotext/requests/get_pending_request.dart';
 import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
@@ -21,6 +22,7 @@ class _ContactPopupState extends State<ContactPopup> {
   late String name = widget.userName;
   late String pic = widget.profilePicture;
   late String userId = widget.userId;
+  late String currentUserId = UserService.userId!;
 
   @override
   void initState() {
@@ -32,6 +34,17 @@ class _ContactPopupState extends State<ContactPopup> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkRelationShipStatus() async {
+
+    if (UserService.userId != null) {
+      // Check for pending requests and friendship
+      bool isFriend = UserService.friendList?.any((friend) => friend['user_id'] == widget.userId) ?? false;
+    } else {
+      // Handle the case where userId is null, e.g., show an error
+      devtools.log("User ID is null");
+    }
   }
 
   @override
