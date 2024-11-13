@@ -54,11 +54,12 @@ class _ContactViewState extends State<ContactView> {
                 isScrollControlled:
                     true, // Ensures the sheet can have a custom height,
                 builder: (BuildContext context) {
-                  return const FriendSearchPopup();
+                  return const UserSearchPopup();
                 },
               );
             },
-            icon: const Icon(Icons.person_add_alt_1),
+            tooltip: 'Search for users',
+            icon: const Icon(Icons.person_search),
           ),
           PopupMenuButton<String>(
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -74,6 +75,7 @@ class _ContactViewState extends State<ContactView> {
                 Navigator.of(context).pushReplacementNamed(loginRoute);
               }
             },
+            offset: const Offset(0, 45),
           )
         ],
       ),

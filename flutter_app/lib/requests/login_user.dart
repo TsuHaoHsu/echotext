@@ -63,6 +63,7 @@ Future<String> loginUser(
       }
     }
   } catch (e) {
+    devtools.log(e.toString());
     rethrow;
   }
   // Add a throw statement at the end in case the function reaches here.

@@ -41,6 +41,10 @@ class UserLogin(BaseModel):
     password: str
     #isVerified: bool
     
+class FriendRequest(BaseModel):
+    sender_id: str
+    receiver_id: str
+
 class Message(BaseModel):
     message_id: Optional[str]
     sender_id: str
@@ -151,8 +155,9 @@ async def get_user_list(query: Optional[str] = Query(None)):
 
 @app.post("/user/login")
 async def login_user(user: UserLogin):
-    user_record = await database["users"].find_one({"email": user.email})
     
+    user_record = await database["users"].find_one({"email": user.email})
+
     
     try:
         if user_record:
@@ -214,7 +219,9 @@ async def get_message_history(sender_id: str, receiver_id: str):
     return {"messages": messages}
 
 @app.post("/friend-request/")
-async def send_friend_request(sender_id: str, receiver_id: str):
+async def send_friend_request(request: FriendRequest):
+    sender_id = request.sender_id
+    receiver_id = request.receiver_id
     
     # Check if a pending request already exists between these two users
     existing_request = await database["pending"].find_one({
@@ -232,22 +239,35 @@ async def send_friend_request(sender_id: str, receiver_id: str):
                 {"sender_id": receiver_id, "receiver_id": sender_id, "status": "pending"}
             ]
         })
+        
+        # Invalidate the cache for this request
+        cache_key = f"pending:{sender_id}:{receiver_id}"
+        r.delete(cache_key)  # Clear the cache to reflect fresh data
+        
         return {"message": "Friend request cancelled."}
     
-    request = {
+    # Otherwise, create a new pending request
+    request_data = {
         "sender_id": sender_id,
         "receiver_id": receiver_id,
-        "status": "pending",  # "pending", "accepted", "rejected"
+        "status": "pending",  # Pending status for new requests
         "initiated_at": datetime.now(),
     }
     
-    result = await database["pending"].insert_one(request)
+    result = await database["pending"].insert_one(request_data)
     
     if result.inserted_id:
+        # Invalidate the cache for this new request
+        cache_key = f"pending:{sender_id}:{receiver_id}"
+        r.delete(cache_key)  # Clear the cache to reflect fresh data
+        
         return {
-            "friendship_id": str(result.inserted_id), "status": "pending", "receiver": receiver_id
+            "friendship_id": str(result.inserted_id),
+            "status": "pending",
+            "receiver": receiver_id
         }
-    raise HTTPException(status_code=500, detail="failed to send friend request.")
+    
+    raise HTTPException(status_code=500, detail="Failed to send friend request.")
 
 @app.get("/request-query/")
 async def get_pending_request(sender_id: str, receiver_id: str):
@@ -270,11 +290,12 @@ async def get_pending_request(sender_id: str, receiver_id: str):
         # If a pending request exists, cache the result
         r.setex(cache_key, 300, "pending")  # Cache for 5 minutes
         
-        # Return the pending status
-        return {"message": "pending"}
+        # Return the pending status along with the sender and receiver ids
+        return {"message": "pending", "sender_id": sender_id, "receiver_id": receiver_id}
     
-    # If no request is found, return the appropriate message
-    return {"message": "no pending request"}
+    # If no request is found, cache the result as 'no pending request' for 5 minutes
+    r.setex(cache_key, 300, "no pending request")
+    return {"message": "no pending request", "sender_id": sender_id, "receiver_id": receiver_id}
 
 @app.post("/accept-friend-request/")
 async def accept_friend_request(friendship_id: str):
@@ -306,6 +327,8 @@ async def accept_friend_request(friendship_id: str):
         return {"status": "accepted"}
     raise HTTPException(status_code=400, detail="Friend request not found or already accepted.")
 
+
+
 @app.post("/reject-friend-request/")
 async def reject_friend_request(friendship_id: str):
     
@@ -315,6 +338,16 @@ async def reject_friend_request(friendship_id: str):
     if result.deleted_count:
         return {"status": "rejected"}
     raise HTTPException(status_code=404, detail="Friend request not found or already rejected.")
+
+@app.delete("/remove-friend/{friendship_id}")
+async def remove_friend(friendship_id: str):
+    
+    result = await database["friendship"].delete_one(
+        {"id_": friendship_id}
+    )
+    if result.deleted_count:
+        return "Success"
+    raise HTTPException(status_code=400, detail="Friend not found or already removed.")
 
 @app.get("/friend-list/")
 async def get_friend_list(user_id: str):
@@ -347,6 +380,7 @@ async def get_friend_list(user_id: str):
         {
             "$project": {
                 "_id": 0,
+                "friendship_id": "$_id",  # Add friendship_id to the projection
                 "friend_details": {
                     "$concatArrays": ["$sender_id_details", "$receiver_id_details"]
                 }
@@ -357,6 +391,7 @@ async def get_friend_list(user_id: str):
         },
         {
             "$project": {
+                "friendship_id": 1,
                 "user_id": "$friend_details.user_id",
                 "name": "$friend_details.name"
             }
@@ -370,41 +405,20 @@ async def get_friend_list(user_id: str):
         # Collect both user_id and name for each friend
         if friendship["sender_id"] != user_id:
             friend_list.append({
+                "friendship_id": friendship["friendship_id"],
                 "user_id": friendship["sender_id"],
                 "name": friendship["sender_id_details"][0]["name"]  # Use sender details
             })
         if friendship["receiver_id"] != user_id:
             friend_list.append({
+                "friendship_id": friendship["friendship_id"],
                 "user_id": friendship["receiver_id"],
                 "name": friendship["receiver_id_details"][0]["name"]  # Use receiver details
             })
 
     return {"friends": friend_list}
-    
-    '''
-    friends = await database["friendship"].find({
-        "$or": [
-            {"user1_id": user_id, "status": "accepted"},
-            {"user2_id": user_id, "status": "accepted"}
-        ]
-    }).to_list(None)
-    
-    friend_ids = []
-    
-    for friendship in friends:
-        if friendship["user1_id"] == user_id:
-            friend_ids.append(friendship["user2_id"])
-        else:
-            friend_ids.append(friendship["user1_id"])
-            
-    friend_names = []
-    
-    for friendship in friends:
-            
-    return {"friends_ids": friend_ids}
-    '''
-    
 
+    
 '''
 @app.get("/verify/{token}")
 async def verify_email(token: str):
@@ -417,4 +431,5 @@ async def verify_email(token: str):
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Token expired")
     except jwt.JWTError:
-        raise HTTPException(status_code=400, detail="Invalid token")'''
+        raise HTTPException(status_code=400, detail="Invalid token")
+'''

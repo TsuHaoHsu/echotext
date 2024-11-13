@@ -21,6 +21,7 @@ class UserService{
   static set setFriendList(List<Map<String,dynamic>>? friends) {
     _friendList = friends;
   }
+  
   static Future<void> fetchFriendList() async {
     if (_userId != null){
       

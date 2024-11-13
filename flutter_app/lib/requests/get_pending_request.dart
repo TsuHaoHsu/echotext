@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:echotext/constants/uri.dart';
 import 'package:http/http.dart' as http;
 
-Future<String> getPendingRequest(
+Future<Map<String,dynamic>> getPendingRequest(
   String senderId,
   String receiverId,
 ) async {
@@ -16,7 +16,12 @@ Future<String> getPendingRequest(
 
     final result = jsonDecode(response.body);
     
-    return result['message'];
+    if(result['message'].isNotEmpty){
+      return result;
+    }
+    else {
+      return {};
+    }
 
   } else {
     throw Exception(

@@ -2,18 +2,20 @@ import 'package:echotext/components/contact_popup.dart';
 import 'package:echotext/components/dialog_popup.dart';
 import 'package:echotext/requests/add_friend.dart';
 import 'package:echotext/requests/get_user_list.dart';
+import 'package:echotext/services/auth_service.dart';
+import 'package:echotext/services/token_service.dart';
 import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
 
-class FriendSearchPopup extends StatefulWidget {
-  const FriendSearchPopup({super.key});
+class UserSearchPopup extends StatefulWidget {
+  const UserSearchPopup({super.key});
 
   @override
-  State<FriendSearchPopup> createState() => _FriendSearchPopupState();
+  State<UserSearchPopup> createState() => _UserSearchPopupState();
 }
 
-class _FriendSearchPopupState extends State<FriendSearchPopup> {
+class _UserSearchPopupState extends State<UserSearchPopup> {
   late TextEditingController _controller;
   List<Map<String, dynamic>> _userList = []; // List of all users
   List<Map<String, dynamic>> _filteredUserList =
@@ -25,6 +27,7 @@ class _FriendSearchPopupState extends State<FriendSearchPopup> {
     super.initState();
     _controller = TextEditingController();
     _friendList = Future.value([]);
+    _checkAccessToken();
     _fetchUserList(); // Load user list on start
   }
 
@@ -32,6 +35,13 @@ class _FriendSearchPopupState extends State<FriendSearchPopup> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _checkAccessToken() async {
+    if (!await TokenService().hasAccessToken()) {
+      AuthService authService = AuthService();
+      authService.logout();
+    }
   }
 
   void _fetchUserList() async {

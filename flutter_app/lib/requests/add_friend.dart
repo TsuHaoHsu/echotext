@@ -3,7 +3,7 @@ import 'package:echotext/constants/uri.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as devtools show log;
 
-Future<bool> addFriend(
+Future<String> addFriend(
   String userId,
   String userId2,
 ) async {
@@ -15,8 +15,8 @@ Future<bool> addFriend(
       },
       body: jsonEncode(
         <String, String>{
-          'user1_id': userId,
-          'user2_id': userId2,
+          'sender_id': userId,
+          'receiver_id': userId2,
         },
       ),
     );
@@ -28,10 +28,10 @@ Future<bool> addFriend(
 
       if (status == 'pending') {
         devtools.log('Friend request sent to $userRequest');
-        return true;
+        return "Sent";
       } else {
         devtools.log('Friend request canceled');
-        return false;
+        return "Canceled";
       }
     } else {
       throw Exception('Failed to send friend request');

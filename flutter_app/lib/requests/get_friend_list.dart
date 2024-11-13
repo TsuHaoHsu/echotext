@@ -24,6 +24,7 @@ Future<List<Map<String,dynamic>>> getFriendList(
           data['friends'].map((item) => {
             'user_id': item['user_id'],
             'name': item['name'],
+            'friendship_id': item['friendship_id'],
           }),
         );
         return friendList;
