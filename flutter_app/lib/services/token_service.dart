@@ -1,7 +1,19 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'dart:developer' as devtools show log;
 
 class TokenService {
+  // Private constructor
+  TokenService._privateConstructor();
+
+  // Static variable to hold the single instance of the class
+  static final TokenService _instance = TokenService._privateConstructor();
+
+  // Public factory constructor to access the singleton instance
+  factory TokenService() {
+    return _instance;
+  }
+
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   Future<void> storeAccessToken(String token) async {
@@ -34,9 +46,9 @@ class TokenService {
   }
   
   Future<bool> hasAccessToken() async {
-    String? accessToken = await _secureStorage.read(key: 'access_token');
-    return accessToken != null;
-  }
+  String? accessToken = await _secureStorage.read(key: 'access_token');
+  return accessToken != null && accessToken.isNotEmpty;  // Also check for empty string
+}
 
   Future<bool> hasRefreshToken() async {
     String? refreshToken = await _secureStorage.read(key: 'refresh_token');
@@ -71,6 +83,5 @@ class TokenService {
     }
 
     return false;
-
   }
 }

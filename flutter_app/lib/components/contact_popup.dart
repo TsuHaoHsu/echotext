@@ -58,7 +58,7 @@ class _ContactPopupState extends State<ContactPopup> {
       if (_buttonText == 'Add friend' ||
           _buttonText == 'Cancel friend request') {
         String response = await addFriend(UserService.userId!, widget.userId);
-        //devtools.log(response);
+        devtools.log(response);
 
         if (!context.mounted) return;
         if (response == 'Sent') {
@@ -70,7 +70,7 @@ class _ContactPopupState extends State<ContactPopup> {
             "Friend request sent",
           );
 
-        await _checkRelationShipStatus(); // Recheck after removal
+          await _checkRelationShipStatus(); // Recheck after removal
         } else if (response == 'Canceled') {
           // Friend request canceled
           if (!context.mounted) return;
@@ -79,13 +79,18 @@ class _ContactPopupState extends State<ContactPopup> {
             "Success",
             "Friend request canceled",
           );
-        await _checkRelationShipStatus(); // Recheck after removal
+          await _checkRelationShipStatus(); // Recheck after removal
+        }
       } else if (_buttonText == 'Remove friend') {
         await deleteFriend(_friendShipId);
         await _checkRelationShipStatus(); // Recheck after removal
+      } else if (_buttonText == 'Manage friend request') {
+        devtools.log(_buttonText);
+        if (!context.mounted) return;
+        dialogPopup(context, 'Friend Request',
+            'Do you want to accept $name\'s friend request?');
       }
-
-    }} catch (e) {
+    } catch (e) {
       if (!context.mounted) return;
       dialogPopup(context, 'Error', '$e');
     } finally {
@@ -111,7 +116,8 @@ class _ContactPopupState extends State<ContactPopup> {
       );
 
       bool isFriend = friend!.isNotEmpty;
-      Map<String, dynamic> pendingRequest = await getPendingRequest(currentUserId, widget.userId);
+      Map<String, dynamic> pendingRequest =
+          await getPendingRequest(currentUserId, widget.userId);
       String isPending = pendingRequest['message'] ?? 'no pending request';
       //devtools.log("The responses are $isFriend and $isPending");
       setState(() {
@@ -121,10 +127,10 @@ class _ContactPopupState extends State<ContactPopup> {
           _buttonText = 'Remove friend';
           devtools.log("Friendship ID: ${friend['friendship_id']}");
         } else if (isPending == 'pending') {
-          if(pendingRequest['sender_id'] == currentUserId){
+          if (pendingRequest['sender_id'] == currentUserId) {
             _buttonIcon = Icons.person_add_disabled_outlined;
             _buttonText = 'Cancel friend request';
-          }else{
+          } else {
             _buttonIcon = Icons.more_horiz;
             _buttonText = 'Manage friend request';
           }

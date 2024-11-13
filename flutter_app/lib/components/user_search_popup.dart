@@ -20,13 +20,13 @@ class _UserSearchPopupState extends State<UserSearchPopup> {
   List<Map<String, dynamic>> _userList = []; // List of all users
   List<Map<String, dynamic>> _filteredUserList =
       []; // List of all filtered users
-  late Future<List<Map<String, dynamic>>> _friendList;
+  //Future<List<Map<String, dynamic>>> _friendList = Future.value([]);
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController();
-    _friendList = Future.value([]);
+    //_friendList = Future.value([]);
     _checkAccessToken();
     _fetchUserList(); // Load user list on start
   }
@@ -38,11 +38,17 @@ class _UserSearchPopupState extends State<UserSearchPopup> {
   }
 
   void _checkAccessToken() async {
-    if (!await TokenService().hasAccessToken()) {
-      AuthService authService = AuthService();
-      authService.logout();
-    }
+  // Access the singleton instance of TokenService
+  TokenService tokenService = TokenService();
+
+  // Check if the access token exists
+  bool hasToken = await tokenService.hasAccessToken();
+  if (!hasToken) {
+    AuthService authService = AuthService();
+    devtools.log("Logging out...");  // Debugging line
+    authService.logout();
   }
+}
 
   void _fetchUserList() async {
     try {
