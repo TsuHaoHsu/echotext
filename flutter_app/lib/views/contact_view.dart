@@ -1,5 +1,3 @@
-import 'dart:ui_web';
-
 import 'package:echotext/components/user_search_popup.dart';
 import 'package:echotext/constants/routes.dart';
 import 'package:echotext/services/auth_service.dart';
