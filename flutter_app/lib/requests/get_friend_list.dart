@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:echotext/constants/uri.dart';
 import 'package:http/http.dart' as http;
@@ -22,14 +21,16 @@ Future<List<Map<String,dynamic>>> getFriendList(
       if (data['friends'] != null && data['friends'] is List && data['friends'].isNotEmpty) {
         List<Map<String, dynamic>> friendList = List<Map<String, dynamic>>.from(
           data['friends'].map((item) => {
-            'user_id': item['user_id'],
-            'name': item['name'],
+            'user_id': item['friend_id'],
+            'name': item['friend_name'],
             'friendship_id': item['friendship_id'],
           }),
         );
+        devtools.log('wwwww: ${data['friends'].toString()}');
         return friendList;
       } else {
         // If 'friends' is null or empty, return an empty list
+        devtools.log('llll: ${data['friends'].toString()}');
         return [];
       }
     } catch (e) {

@@ -1,16 +1,13 @@
 import 'package:echotext/components/contact_popup.dart';
-import 'package:echotext/components/dialog_popup.dart';
-import 'package:echotext/requests/add_friend.dart';
 import 'package:echotext/requests/get_user_list.dart';
 import 'package:echotext/services/auth_service.dart';
 import 'package:echotext/services/token_service.dart';
-import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
 
 class UserSearchPopup extends StatefulWidget {
-  const UserSearchPopup({super.key});
-
+  final VoidCallback onFriendListUpdated;
+  const UserSearchPopup({super.key, required this.onFriendListUpdated});
   @override
   State<UserSearchPopup> createState() => _UserSearchPopupState();
 }
@@ -38,17 +35,17 @@ class _UserSearchPopupState extends State<UserSearchPopup> {
   }
 
   void _checkAccessToken() async {
-  // Access the singleton instance of TokenService
-  TokenService tokenService = TokenService();
+    // Access the singleton instance of TokenService
+    TokenService tokenService = TokenService();
 
-  // Check if the access token exists
-  bool hasToken = await tokenService.hasAccessToken();
-  if (!hasToken) {
-    AuthService authService = AuthService();
-    devtools.log("Logging out...");  // Debugging line
-    authService.logout();
+    // Check if the access token exists
+    bool hasToken = await tokenService.hasAccessToken();
+    if (!hasToken) {
+      AuthService authService = AuthService();
+      devtools.log("Logging out..."); // Debugging line
+      authService.logout();
+    }
   }
-}
 
   void _fetchUserList() async {
     try {
@@ -126,8 +123,10 @@ class _UserSearchPopupState extends State<UserSearchPopup> {
                                 profilePicture: isNetworkImage
                                     ? profilePictureUrl
                                     : 'assets/images/default_avatar.png',
+                                onFriendListUpdated: widget.onFriendListUpdated,  // Pass callback down
                               );
-                            });
+                            },
+                          ).whenComplete(widget.onFriendListUpdated);
                       },
                     );
                   }),

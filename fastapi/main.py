@@ -6,16 +6,18 @@ from pydantic import BaseModel, EmailStr
 from pymongo import MongoClient
 from typing import List, Dict
 from motor.motor_asyncio import AsyncIOMotorClient
-import bcrypt
-import jwt
 from db import database  # Import the database from db.py
 from datetime import datetime
 from login_verification import router as auth_router
+from json import dumps, loads
+from bson import ObjectId
 import redis
+import bcrypt
+import jwt
 
 app = FastAPI()
 app.include_router(auth_router)
-r = redis.Redis(host='localhost', port=6379, db=0)
+#r = redis.Redis(host='localhost', port=6379, db=0)
 
 #MONGODB_URL = "mongodb://localhost:27017"
 MONGODB_URL = "mongodb://192.168.0.195:27017"
@@ -44,6 +46,7 @@ class UserLogin(BaseModel):
 class FriendRequest(BaseModel):
     sender_id: str
     receiver_id: str
+    name: str
 
 class Message(BaseModel):
     message_id: Optional[str]
@@ -64,6 +67,13 @@ class Friendship(BaseModel):
     status: str  # "pending", "accepted", "rejected"
     initiated_at: datetime
     accepted_at: Optional[datetime] = None
+
+# def generate_cache_key(sender_id: str, receiver_id: str) -> str:
+#     return f"pending:{min(sender_id, receiver_id)}:{max(sender_id, receiver_id)}"
+
+# async def invalidate_pending_request_cache(sender_id: str, receiver_id: str):
+#     cache_key = generate_cache_key(sender_id, receiver_id)
+#     r.delete(cache_key)
 
 @app.get("/test/")
 async def test_connection():
@@ -197,8 +207,6 @@ async def login_user(user: UserLogin):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    
-
 @app.post("/send-message/")
 async def send_message(message: Message):
     
@@ -222,128 +230,135 @@ async def get_message_history(sender_id: str, receiver_id: str):
 async def send_friend_request(request: FriendRequest):
     sender_id = request.sender_id
     receiver_id = request.receiver_id
+    sender_name = request.name
     
-    # Check if a pending request already exists between these two users
+    # Check for a pending request in the correct sender/receiver roles
     existing_request = await database["pending"].find_one({
-        "$or": [
-            {"sender_id": sender_id, "receiver_id": receiver_id, "status": "pending"},
-            {"sender_id": receiver_id, "receiver_id": sender_id, "status": "pending"}
-        ]
+        "sender_id": sender_id, 
+        "receiver_id": receiver_id, 
+        "sender_name": sender_name,
+        "status": "pending",
     })
     
     if existing_request:
-        # If a pending request exists, delete it (cancel the request)
+        # Cancel the existing request
         await database["pending"].delete_one({
-            "$or": [
-                {"sender_id": sender_id, "receiver_id": receiver_id, "status": "pending"},
-                {"sender_id": receiver_id, "receiver_id": sender_id, "status": "pending"}
-            ]
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "status": "pending"
         })
-        
-        # Invalidate the cache for this request
-        cache_key = f"pending:{sender_id}:{receiver_id}"
-        r.delete(cache_key)  # Clear the cache to reflect fresh data
-        
         return {"message": "Friend request cancelled."}
-    
+
     # Otherwise, create a new pending request
     request_data = {
         "sender_id": sender_id,
         "receiver_id": receiver_id,
-        "status": "pending",  # Pending status for new requests
+        "sender_name": sender_name,
+        "status": "pending",
         "initiated_at": datetime.now(),
     }
     
     result = await database["pending"].insert_one(request_data)
-    
     if result.inserted_id:
-        # Invalidate the cache for this new request
-        cache_key = f"pending:{sender_id}:{receiver_id}"
-        r.delete(cache_key)  # Clear the cache to reflect fresh data
-        
-        return {
-            "friendship_id": str(result.inserted_id),
-            "status": "pending",
-            "receiver": receiver_id
-        }
+        return {"friendship_id": str(result.inserted_id), "status": "pending"}
     
     raise HTTPException(status_code=500, detail="Failed to send friend request.")
 
 @app.get("/request-query/")
 async def get_pending_request(sender_id: str, receiver_id: str):
     
-    # Generate a unique cache key for the pair of users
-    cache_key = f"pending:{sender_id}:{receiver_id}"
-    cached_data = r.get(cache_key)
-    
-    if cached_data:
-        return {"message": cached_data.decode("utf-8")}
-    
-    existing_request = await database["pending"].find_one({
-        "$or": [
-            {"sender_id": sender_id, "receiver_id": receiver_id, "status": "pending"},
-            {"sender_id": receiver_id, "receiver_id": sender_id, "status": "pending"},
-        ]
+    sent_request = await database["pending"].find_one({
+        "sender_id": sender_id, 
+        "receiver_id": receiver_id, 
+        "status": "pending"
     })
     
-    if existing_request:
-        # If a pending request exists, cache the result
-        r.setex(cache_key, 300, "pending")  # Cache for 5 minutes
-        
-        # Return the pending status along with the sender and receiver ids
-        return {"message": "pending", "sender_id": sender_id, "receiver_id": receiver_id}
+    if sent_request:
+        return {"message": "pending_sent", "sender_id": sender_id, "receiver_id": receiver_id}
     
-    # If no request is found, cache the result as 'no pending request' for 5 minutes
-    r.setex(cache_key, 300, "no pending request")
+    # Check if the current user is the receiver of a pending request
+    received_request = await database["pending"].find_one({
+        "sender_id": receiver_id, 
+        "receiver_id": sender_id, 
+        "status": "pending"
+    })
+    
+    if received_request:
+        return {"message": "pending_received", "sender_id": receiver_id, "receiver_id": sender_id}
+    
+    # No pending request
     return {"message": "no pending request", "sender_id": sender_id, "receiver_id": receiver_id}
 
 @app.post("/accept-friend-request/")
-async def accept_friend_request(friendship_id: str):
+async def accept_friend_request(request: FriendRequest):
     
-    # result = await database["friendship"].update_one(
-    #     {"id_": friendship_id,"status": "pending"},
-    #     {"$set": {"status": "accepted", "accepted_at": datetime.now()}}
-    # )
+    sender_id = request.sender_id
+    receiver_id = request.receiver_id
+    receiver_name = request.name
     
-    pending_request = await database["pending"].find_one({
-        # ObjectId is for converting friendship_id back to mongodb object id
-        "_id": ObjectId(friendship_id), "status": "pending",
+    # Fetch the sender's name from the 'users' collection
+    sender = await database["users"].find_one({"_id": ObjectId(sender_id)})
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender not found.")
+    
+    sender_name = sender["name"]
+    
+    delete_result = await database["pending"].delete_one({
+        "$or": [
+            {"sender_id": sender_id, "receiver_id": receiver_id, "status": "pending"},
+            {"sender_id": receiver_id, "receiver_id": sender_id, "status": "pending"}
+        ]
     })
     
-    if not pending_request:
+    if delete_result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Pending friend request not found.")
-    
+
+    # Create a new friendship
     friendship = {
-        "sender_id": pending_request["sender_id"],
-        "receiver_id": pending_request["receiver_id"],
+        "sender_id": sender_id,
+        "sender_name": sender_name,
+        "receiver_id": receiver_id,
+        "receiver_name": receiver_name,
         "status": "accepted",
-        "initiated_at": pending_request["initiated_at"],
         "accepted_at": datetime.now(),
     }
-    
     result = await database["friendship"].insert_one(friendship)
-    
-    if result.modified_count:
+    if result.inserted_id:
         return {"status": "accepted"}
-    raise HTTPException(status_code=400, detail="Friend request not found or already accepted.")
-
-
+    
+    raise HTTPException(status_code=400, detail="Failed to accept friend request.")
 
 @app.post("/reject-friend-request/")
-async def reject_friend_request(friendship_id: str):
-    
-    result = await database["pending"].delete_one(
-        {"id_": friendship_id}
-    )
-    if result.deleted_count:
-        return {"status": "rejected"}
-    raise HTTPException(status_code=404, detail="Friend request not found or already rejected.")
+async def reject_friend_request(request: FriendRequest):
+    sender_id = request.sender_id
+    receiver_id = request.receiver_id
+
+    # Delete the pending request
+    delete_result = await database["pending"].delete_one({
+        "$or": [
+            {"sender_id": sender_id, "receiver_id": receiver_id, "status": "pending"},
+            {"sender_id": receiver_id, "receiver_id": sender_id, "status": "pending"}
+        ]
+    })
+    if delete_result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pending friend request not found.")
+
+    return {"message": "Friend request rejected."}
 
 @app.delete("/remove-friend/{friendship_id}")
 async def remove_friend(friendship_id: str):
     
+    print(f"Received friendship_id: {friendship_id}")  # Log the friendship ID
+    
+    # Convert the friendship_id from string to ObjectId
+    try:
+        friendship_id_obj = ObjectId(friendship_id)
+        print(f"Converted to ObjectId: {friendship_id_obj}")  # Log the ObjectId
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format.")
+    
     result = await database["friendship"].delete_one(
-        {"id_": friendship_id}
+        {"_id": friendship_id_obj}
     )
     if result.deleted_count:
         return "Success"
@@ -351,72 +366,35 @@ async def remove_friend(friendship_id: str):
 
 @app.get("/friend-list/")
 async def get_friend_list(user_id: str):
+    # Query for all friendships where the user is either the sender or receiver
+    cursor = database["friendship"].find({
+        '$or': [
+            {"sender_id": user_id, "status": "accepted"},
+            {"receiver_id": user_id, "status": "accepted"}
+        ]
+    })
     
-    pipeline = [
-        {
-            "$match": {
-                "$or": [
-                    {"sender_id": user_id, "status": "accepted"},
-                    {"receiver_id": user_id, "status": "accepted"}
-                ]
-            }
-        },
-        {
-            "$lookup": {
-                "from": "users",  # The collection to join with
-                "localField": "sender_id",  # Field from the friendship document
-                "foreignField": "user_id",  # Field from the user document
-                "as": "sender_id_details"  # Output field to store user details
-            }
-        },
-        {
-            "$lookup": {
-                "from": "users",
-                "localField": "receiver_id",
-                "foreignField": "user_id",
-                "as": "receiver_id_details"
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "friendship_id": "$_id",  # Add friendship_id to the projection
-                "friend_details": {
-                    "$concatArrays": ["$sender_id_details", "$receiver_id_details"]
-                }
-            }
-        },
-        {
-            "$unwind": "$friend_details"
-        },
-        {
-            "$project": {
-                "friendship_id": 1,
-                "user_id": "$friend_details.user_id",
-                "name": "$friend_details.name"
-            }
-        }
-    ]
+    friends = []
     
-    friends = await database["friendship"].aggregate(pipeline).to_list(None)
-    friend_list = []
-
-    for friendship in friends:
-        # Collect both user_id and name for each friend
+    # Iterate over the cursor asynchronously
+    async for friendship in cursor:
+        # Determine the friend to append (exclude user_id)
         if friendship["sender_id"] != user_id:
-            friend_list.append({
-                "friendship_id": friendship["friendship_id"],
-                "user_id": friendship["sender_id"],
-                "name": friendship["sender_id_details"][0]["name"]  # Use sender details
+            friends.append({
+                "friendship_id": str(friendship["_id"]),  # Include the friendship _id
+                "friend_id": friendship["sender_id"],    # Friend's ID
+                "friend_name": friendship["sender_name"]  # Friend's Name
             })
-        if friendship["receiver_id"] != user_id:
-            friend_list.append({
-                "friendship_id": friendship["friendship_id"],
-                "user_id": friendship["receiver_id"],
-                "name": friendship["receiver_id_details"][0]["name"]  # Use receiver details
+        else:
+            friends.append({
+                "friendship_id": str(friendship["_id"]),  # Include the friendship _id
+                "friend_id": friendship["receiver_id"],   # Friend's ID
+                "friend_name": friendship["receiver_name"] # Friend's Name
             })
+    
+    # Return the response with the serialized data
+    return JSONResponse(content={"friends": friends})
 
-    return {"friends": friend_list}
 
     
 '''

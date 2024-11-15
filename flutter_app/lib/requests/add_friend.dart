@@ -6,6 +6,7 @@ import 'dart:developer' as devtools show log;
 Future<String> addFriend(
   String userId,
   String userId2,
+  String senderName,
 ) async {
   try {
     final response = await http.post(
@@ -17,6 +18,7 @@ Future<String> addFriend(
         <String, String>{
           'sender_id': userId,
           'receiver_id': userId2,
+          'name': senderName,
         },
       ),
     );

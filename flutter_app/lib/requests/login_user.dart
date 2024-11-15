@@ -2,12 +2,11 @@ import 'dart:convert';
 import 'dart:developer' as devtools show log;
 import 'package:echotext/components/exception.dart';
 import 'package:echotext/constants/uri.dart';
-import 'package:echotext/provider/state_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:echotext/models/user.dart';
 import 'package:echotext/services/token_service.dart';
 
-Future<String> loginUser(
+Future <Map<String,dynamic>> loginUser(
   String email,
   String password,
 ) async {
@@ -30,17 +29,18 @@ Future<String> loginUser(
       final userData = jsonDecode(response.body);
       final currUser = User(
         id: userData['id'],
+        name: userData['name'],
         email: email,
         //isVerified: userData['isVerified'], /////////////////////////
       );
       devtools
-          .log("User ${currUser.email} login successfully: id-${currUser.id}");
+          .log("User ${currUser.name} login successfully: id-${currUser.id}");
 
       final accessToken = userData['access_token'];
       final refreshToken = userData['refresh_token'];
       await tokenService.storeAccessToken(accessToken);
       await tokenService.storeRefreshToken(refreshToken);
-      return currUser.id!;
+      return {'user_id': currUser.id!, 'name':currUser.name!};
     } else {
       final errorData = jsonDecode(response.body);
       devtools.log('Failed to login: ${response.statusCode} ${response.body}');

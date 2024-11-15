@@ -1,11 +1,10 @@
-import 'package:echotext/components/contact_popup.dart';
+import 'dart:ui_web';
+
 import 'package:echotext/components/user_search_popup.dart';
 import 'package:echotext/constants/routes.dart';
-import 'package:echotext/requests/get_friend_list.dart';
 import 'package:echotext/services/auth_service.dart';
 import 'package:echotext/services/token_service.dart';
 import 'package:echotext/services/user_service.dart';
-import 'package:echotext/views/login_view.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
 
@@ -54,7 +53,7 @@ class _ContactViewState extends State<ContactView> {
                 isScrollControlled:
                     true, // Ensures the sheet can have a custom height,
                 builder: (BuildContext context) {
-                  return const UserSearchPopup();
+                  return UserSearchPopup(onFriendListUpdated: _fetchFriendList);
                 },
               );
             },
@@ -86,9 +85,14 @@ class _ContactViewState extends State<ContactView> {
               itemBuilder: (context, index) {
                 final friend = _friendList[index];
                 return ListTile(
-                  leading: const Icon(Icons.person),
+                      leading: const CircleAvatar(
+                    radius: 30,
+                    backgroundImage: AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                  ),
                   title: Text(friend['name'] ?? 'Unknown id'),
-                  onTap: () {},
+                  onTap: () {
+                    
+                  },
                 );
               },
             ),

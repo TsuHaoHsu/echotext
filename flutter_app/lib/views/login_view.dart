@@ -46,14 +46,16 @@ class _LoginViewState extends State<LoginView> {
               // Add your login logic here
               TokenService tokenService = TokenService();
               try {
-                final currUserID = await loginUser("cba@gmail.com", "12345");
-                UserService.setUserId = currUserID;
+                //final currUser = await loginUser("abc@gmail.com", "12345"); //Jason Strong
+                final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
+                UserService.setUserId = currUser['user_id'];
+                UserService.setName = currUser['name'];
 
                 bool hasToken = await tokenService.hasAccessToken();
 
                 if (hasToken) {
                   // Proceed to the next screen, as user is logged in
-                  await getFriendList(currUserID);
+                  await getFriendList(UserService.userId!);
                   if (!context.mounted) return;
                   Navigator.of(context).pushNamedAndRemoveUntil(contactRoute,(Route<dynamic> route) => false);
                 } else {
