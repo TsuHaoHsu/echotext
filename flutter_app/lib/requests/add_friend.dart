@@ -10,7 +10,7 @@ Future<String> addFriend(
 ) async {
   try {
     final response = await http.post(
-      Uri.parse("${uri}friend-request/"),
+      Uri.parse("${uriHTTP}friend-request/"),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },

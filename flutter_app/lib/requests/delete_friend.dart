@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:echotext/constants/uri.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as devtools show log;
@@ -8,7 +7,7 @@ Future<bool> deleteFriend(
 ) async {
   try {
     final response = await http.delete(
-      Uri.parse("${uri}remove-friend/$friendshipId"),
+      Uri.parse("${uriHTTP}remove-friend/$friendshipId"),
       headers: <String,String>{
         'Content-Type': 'application/json'
       }

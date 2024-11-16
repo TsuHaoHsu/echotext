@@ -3,6 +3,7 @@ import 'package:echotext/constants/routes.dart';
 import 'package:echotext/services/auth_service.dart';
 import 'package:echotext/services/token_service.dart';
 import 'package:echotext/services/user_service.dart';
+import 'package:echotext/views/message_view.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
 
@@ -83,13 +84,22 @@ class _ContactViewState extends State<ContactView> {
               itemBuilder: (context, index) {
                 final friend = _friendList[index];
                 return ListTile(
-                      leading: const CircleAvatar(
+                  leading: const CircleAvatar(
                     radius: 30,
-                    backgroundImage: AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                    backgroundImage:
+                        AssetImage('assets/images/default_avatar.png')
+                            as ImageProvider,
                   ),
                   title: Text(friend['name'] ?? 'Unknown id'),
                   onTap: () {
-                    
+                    Navigator.pushNamed(
+                      context,
+                      messageRoute,
+                      arguments: {
+                        'userId': friend['user_id'],
+                        'userName': friend['name'] ?? 'Unknown user',
+                      }
+                    );
                   },
                 );
               },

@@ -3,6 +3,7 @@ import 'package:echotext/services/auth_service.dart';
 import 'package:echotext/services/token_service.dart';
 import 'package:echotext/views/contact_view.dart';
 import 'package:echotext/views/login_view.dart';
+import 'package:echotext/views/message_view.dart';
 import 'package:echotext/views/register_view.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
@@ -53,6 +54,17 @@ class MyApp extends StatelessWidget {
         contactRoute: (context) => ContactView(),
         loginRoute: (context) => const LoginView(),
         registerRoute: (context) => const RegisterView(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == messageRoute) {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+              builder: (context) => MessageView(
+                    contactId: args['userId'],
+                    contactName: args['userName'],
+                  ));
+        }
+        return null;
       },
       debugShowCheckedModeBanner: false, // remove the banner top right
     );

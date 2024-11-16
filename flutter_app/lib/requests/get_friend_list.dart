@@ -8,7 +8,7 @@ Future<List<Map<String,dynamic>>> getFriendList(
   String userId,
 ) async {
     final response = await http.get(
-      Uri.parse("${uri}friend-list/?user_id=$userId"),
+      Uri.parse("${uriHTTP}friend-list/?user_id=$userId"),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },

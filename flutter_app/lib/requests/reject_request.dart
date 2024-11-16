@@ -9,7 +9,7 @@ Future<bool> deleteFriendRequest(
 ) async {
   try {
     final response =
-        await http.delete(Uri.parse("${uri}reject-friend-request/"),
+        await http.delete(Uri.parse("${uriHTTP}reject-friend-request/"),
             headers: <String, String>{'Content-Type': 'application/json'},
             body: json.encode({
               'sender_id': senderId,

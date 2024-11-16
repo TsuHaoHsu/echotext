@@ -1,5 +1,5 @@
 import 'package:echotext/components/dialog_popup.dart';
-import 'package:echotext/components/exception.dart';
+import 'package:echotext/constants/exception.dart';
 import 'package:echotext/constants/routes.dart';
 import 'package:echotext/requests/create_user.dart';
 import 'package:flutter/material.dart';

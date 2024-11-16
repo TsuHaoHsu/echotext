@@ -1,5 +1,5 @@
 import 'package:echotext/components/dialog_popup.dart';
-import 'package:echotext/components/exception.dart';
+import 'package:echotext/constants/exception.dart';
 import 'package:echotext/constants/routes.dart';
 import 'package:echotext/provider/state_provider.dart';
 import 'package:echotext/requests/get_friend_list.dart';

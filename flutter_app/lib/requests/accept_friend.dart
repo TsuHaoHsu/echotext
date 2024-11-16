@@ -11,7 +11,7 @@ Future<String> acceptFriendRequest(
 ) async { 
   try{
   final response = await http.post(
-    Uri.parse('${uri}accept-friend-request/'),
+    Uri.parse('${uriHTTP}accept-friend-request/'),
     headers: <String, String>{
       'Content-Type': 'application/json'
     },

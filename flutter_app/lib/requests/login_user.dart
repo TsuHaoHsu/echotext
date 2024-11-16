@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
-import 'package:echotext/components/exception.dart';
+import 'package:echotext/constants/exception.dart';
 import 'package:echotext/constants/uri.dart';
 import 'package:http/http.dart' as http;
 import 'package:echotext/models/user.dart';
@@ -13,7 +13,7 @@ Future <Map<String,dynamic>> loginUser(
   final TokenService tokenService = TokenService();
 
   try {
-    final url = Uri.parse("${uri}user/login");
+    final url = Uri.parse("${uriHTTP}user/login");
     final response = await http.post(
       url,
       headers: <String, String>{

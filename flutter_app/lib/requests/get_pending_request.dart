@@ -8,7 +8,7 @@ Future<Map<String,dynamic>> getPendingRequest(
   String receiverId,
 ) async {
   final response = await http.get(
-    Uri.parse('${uri}request-query/?sender_id=$senderId&receiver_id=$receiverId'),
+    Uri.parse('${uriHTTP}request-query/?sender_id=$senderId&receiver_id=$receiverId'),
     headers: <String, String>{
       'Content-Type': 'application/json',
     },

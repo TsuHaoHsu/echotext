@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:echotext/components/exception.dart';
+import 'package:echotext/constants/exception.dart';
 import 'package:echotext/constants/uri.dart';
 import 'package:echotext/models/user.dart';
 import 'package:http/http.dart' as http;
@@ -13,7 +13,7 @@ Future<void> createUser(
 ) async {
   try {
     final response = await http.post(
-      Uri.parse("${uri}user/"),
+      Uri.parse("${uriHTTP}user/"),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },

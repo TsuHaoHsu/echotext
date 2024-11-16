@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 Future<List<Map<String, dynamic>>> getUserList(String searchQuery) async {
   final response = await http.get(
-    Uri.parse("${uri}user-list/?query=$searchQuery"),
+    Uri.parse("${uriHTTP}user-list/?query=$searchQuery"),
     headers: <String, String>{'Content-Type': 'application/json'},
   );
   if (response.statusCode == 200) {

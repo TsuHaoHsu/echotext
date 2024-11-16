@@ -11,6 +11,7 @@ from datetime import datetime
 from login_verification import router as auth_router
 from json import dumps, loads
 from bson import ObjectId
+from fastapi import WebSocket, WebSocketDisconnect
 import redis
 import bcrypt
 import jwt
@@ -55,11 +56,11 @@ class Message(BaseModel):
     content: Optional[str]
     timestamp: datetime
     imageUrl: Optional[str]
-    type: str
-    edited: bool
-    edited_at: Optional[datetime] = None
-    reactions: Dict[str,int] = {}
-    read_status: bool
+    # type: str
+    # edited: bool
+    # edited_at: Optional[datetime] = None
+    # reactions: Dict[str,int] = {}
+    # read_status: bool
 
 class Friendship(BaseModel):
     user1_id: str
@@ -117,7 +118,7 @@ async def create_user(user: User):
         
     raise HTTPException(status_code=500, detail="User could not be created.")
 
-@app.post("/message/")
+@app.post("/create-message/")
 async def create_message(message: Message):
     
     if not (message.content or message.imageUrl):
@@ -214,8 +215,8 @@ async def send_message(message: Message):
     
     return {"message_id": str(result.inserted_id), "status": "sent"}
     
-@app.get("/message-history/", response_model=List[Message])
-async def get_message_history(sender_id: str, receiver_id: str):
+@app.get("/get-message/", response_model=List[Message])
+async def get_message(sender_id: str, receiver_id: str):
     
     messages = await database["message"].find({
         "$or": [
@@ -224,7 +225,36 @@ async def get_message_history(sender_id: str, receiver_id: str):
         ]
     }).sort("timestamp", -1).limit(20).to_list(None)
     
-    return {"messages": messages}
+    return messages
+
+@app.websocket("/ws/messages/{sender_id}/{receiver_id}")
+async def websocket_endpoint(websocket: WebSocket, sender_id: str, receiver_id: str):
+    await websocket.accept()
+    
+    try:
+        messages = await get_message(sender_id, receiver_id)
+        await websocket.send_json({"message": messages})
+        
+        while True:
+           data = await websocket.receive_text()
+           
+           new_message = {
+               "sender_id": sender_id,
+               "receiver_id": receiver_id,
+               "message": data,
+               "timestamp": datetime.now().isoformat(),
+           }
+           await database["message"].insert_one(new_message)
+           
+           await websocket.send_json({"new_message": new_message})
+           
+    except WebSocketDisconnect:
+        print(f"User {sender_id} disconnected")
+
+@app.websocket("/ws/messages/test")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    await websocket.send_text("Connection successful!")
 
 @app.post("/friend-request/")
 async def send_friend_request(request: FriendRequest):
