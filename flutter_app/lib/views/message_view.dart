@@ -1,5 +1,6 @@
 import 'package:echotext/models/message.dart';
 import 'package:echotext/requests/fetch_message_stream.dart';
+import 'package:echotext/requests/send_message.dart';
 import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
@@ -20,12 +21,19 @@ class MessageView extends StatefulWidget {
 class _MessageViewState extends State<MessageView> {
   final TextEditingController _textController = TextEditingController();
   late WebSocketService _webSocketService;
+  late String currentUserId = UserService.userId!;
+  late String contactId = widget.contactId;
+
+  List<Message> messages = []; // List to store messages
 
   @override
   void initState() {
     super.initState();
     // load message
-    _webSocketService = WebSocketService(UserService.userId!, widget.contactId);
+    _webSocketService = WebSocketService(currentUserId, contactId);
+
+    // Listen for incoming WebSocket messages
+    _listenForMessages();
   }
 
   @override
@@ -35,6 +43,51 @@ class _MessageViewState extends State<MessageView> {
     super.dispose();
   }
 
+  void _sendMessage() {
+    final content = _textController.text.trim();
+
+    if (content.isNotEmpty) {
+      _textController.clear();
+
+      // Disable input while waiting for server confirmation
+      setState(() {
+        messages.insert(
+          0,
+          Message(
+            messageId: 'loading...', // Temporary placeholder
+            senderId: currentUserId,
+            receiverId: contactId,
+            content: content,
+            timestamp: DateTime.now(),
+          ),
+        );
+      });
+
+      // Send message via WebSocket
+      _webSocketService.sendMessage(currentUserId, contactId, content);
+    }
+  }
+
+void _listenForMessages() {
+  _webSocketService.messages.listen((data) {
+    // Check if 'message' is null or not a List
+    List<dynamic> messageList = data['message'] ?? [];  // Default to an empty list if null
+
+    if (messageList.isEmpty) {
+      devtools.log('No new messages received.');
+    } else {
+      // Map each message to a Message object, handling the content properly
+      List<Message> newMessages = messageList.map((messageJson) {
+        return Message.fromJson(messageJson);
+      }).toList();
+
+      setState(() {
+        messages.insertAll(0, newMessages);
+      });
+    }
+  });
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,75 +96,49 @@ class _MessageViewState extends State<MessageView> {
       ),
       body: Column(
         children: [
-          StreamBuilder(
-            stream: _webSocketService.messages,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return const Center(child: Text('Error loading messages'));
-              }
-              if (!snapshot.hasData || snapshot.data!['message'] == null) {
-                return const Center(child: Text('No message yet'));
-              }
-              // Check if the data is a List of Map<String, dynamic>
-              final rawMessages = snapshot.data;
-              List<Message> messages = [];
+          Expanded(
+            child: messages.isEmpty
+                ? const Center(
+                    child: Text('No messages yet'),
+                  )
+                : ListView.builder(
+                    reverse: true,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      bool isSentByMe = message.senderId == currentUserId;
 
-              // If it's indeed a List<Map<String, dynamic>>, map each entry to a Message
-              if (rawMessages is List) {
-                messages = rawMessages.map((msg) {
-                  if (msg is Map<String, dynamic>) {
-                    return Message.fromJson(msg); // Convert to Message
-                  } else {
-                    return Message(
-                      messageId: '',
-                      senderId: '',
-                      receiverId: '',
-                      timestamp: DateTime.now(),
-                    ); // Handle the invalid type gracefully
-                  }
-                }).toList();
-              } else {
-                devtools.log('Expected a List but got: $rawMessages');
-              }
-
-              return Expanded(
-                child: ListView.builder(
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    bool isSentByMe = message.senderId == UserService.userId;
-
-                    return Align(
-                      alignment: isSentByMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Padding(
+                      return Padding(
                         padding: const EdgeInsets.all(10.0),
-                        child: ListTile(
-                          title: message.content != null
-                              ? message.content!.startsWith('http')
-                                  ? Image.network(
-                                      message.content!,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                        return const Icon(Icons.error);
-                                      },
-                                    )
-                                  : Text(message.content!)
-                              : const Text('No content'),
-                          subtitle: Text(message.timestamp.toString()),
+                        child: Align(
+                          alignment: isSentByMe
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: ListTile(
+                            title: message.content != null
+                                ? message.content!.startsWith('http')
+                                    ? Image.network(
+                                        message.content!,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return const Icon(Icons.error);
+                                        },
+                                      )
+                                    : Text(message.content!,
+                                        textAlign: isSentByMe
+                                            ? TextAlign.end
+                                            : TextAlign.start)
+                                : const Text('No content'),
+                            subtitle: Text(message.timestamp.toString(),
+                                textAlign: isSentByMe
+                                    ? TextAlign.end
+                                    : TextAlign.start),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
+                      );
+                    },
+                  ),
+          )
         ],
       ),
       bottomNavigationBar: BottomAppBar(
@@ -126,14 +153,7 @@ class _MessageViewState extends State<MessageView> {
               ),
             ),
             IconButton(
-              onPressed: () {
-                //send message
-                String message = _textController.text;
-
-                if (message.isNotEmpty) {
-                  _textController.clear();
-                }
-              },
+              onPressed: _sendMessage,
               icon: const Icon(Icons.send),
             ),
           ],

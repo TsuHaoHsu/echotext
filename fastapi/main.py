@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI, HTTPException, status, Query
 from login_verification import create_login_token
 from fastapi.responses import JSONResponse
@@ -50,12 +51,10 @@ class FriendRequest(BaseModel):
     name: str
 
 class Message(BaseModel):
-    message_id: Optional[str]
     sender_id: str
     receiver_id: str
-    content: Optional[str]
-    timestamp: datetime
-    imageUrl: Optional[str]
+    content: Optional[str] = None
+    imageUrl: Optional[str] = None
     # type: str
     # edited: bool
     # edited_at: Optional[datetime] = None
@@ -117,29 +116,6 @@ async def create_user(user: User):
         }
         
     raise HTTPException(status_code=500, detail="User could not be created.")
-
-@app.post("/create-message/")
-async def create_message(message: Message):
-    
-    if not (message.content or message.imageUrl):
-        raise HTTPException(status_code=400, detail="Message must contain either text or image.")
-    
-    result = await database["message"].insert_one(message.dict())
-    if result.inserted_id:
-        return {
-            "message_id": str(result.inserted_id),
-            "sender_id": message.sender_id,
-            "receiver_id": message.receiver_id,
-            "content": message.content,
-            "timestamp": message.timestamp,
-            "imageurl": message.imageUrl,
-            "type": message.type,
-            "edited": message.edited, # WIP
-            "edited_at": message.edited_at, # WIP
-            "reactions": message.reactions, # WIP
-            "read_status": message.read_status,
-        }
-    raise HTTPException(status_code=500, detail="Message could not be created.")
 
 @app.get("/user-list/", response_model=List[UserQuery])
 async def get_user_list(query: Optional[str] = Query(None)):
@@ -207,13 +183,6 @@ async def login_user(user: UserLogin):
             
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-@app.post("/send-message/")
-async def send_message(message: Message):
-    
-    result = await database["message"].insert_one(message.dict())
-    
-    return {"message_id": str(result.inserted_id), "status": "sent"}
     
 @app.get("/get-message/", response_model=List[Message])
 async def get_message(sender_id: str, receiver_id: str):
@@ -225,31 +194,136 @@ async def get_message(sender_id: str, receiver_id: str):
         ]
     }).sort("timestamp", -1).limit(20).to_list(None)
     
+    # Convert _id to message_id for all messages
+    for message in messages:
+        message["message_id"] = str(message["_id"])  # Convert ObjectId to string
+        del message["_id"]  # Remove the original _id field if it's not needed
+
     return messages
+
+
+@app.post("/create-message/")
+async def create_message(message: Message):
+    
+    if not (message.content or message.imageUrl):
+        raise HTTPException(status_code=400, detail="Message must contain either text or image.")
+    
+    message_data = message.dict()
+    message_data["timestamp"] = datetime.now().isoformat()
+
+
+    result = await database["message"].insert_one(message_data)
+    
+    if result.inserted_id:
+        
+        message_data["message_id"] = str(result.inserted_id)
+        message_data.pop("_id", None)  # Remove "_id" if not needed
+        
+        response_message = {
+            "message_id": str(result.inserted_id), # optional
+            "sender_id": message.sender_id,
+            "receiver_id": message.receiver_id,
+            "content": message.content, # optional
+            "timestamp": message_data["timestamp"],
+            "imageurl": message.imageUrl, # optional
+            #"type": message.type, # optional
+            # "edited": message.edited, # WIP
+            # "edited_at": message.edited_at, # WIP
+            # "reactions": message.reactions, # WIP
+            # "read_status": message.read_status, # WIP
+        }
+        
+    
+        # Broadcast the new message to the WebSocket
+        receiver_websocket = active_connections.get(message.receiver_id)
+        if receiver_websocket:
+            await receiver_websocket.send_json({"new_message": message_data})
+        
+        
+        return response_message
+        
+    raise HTTPException(status_code=500, detail="Message could not be created.")
+
+active_connections = {}
 
 @app.websocket("/ws/messages/{sender_id}/{receiver_id}")
 async def websocket_endpoint(websocket: WebSocket, sender_id: str, receiver_id: str):
-    await websocket.accept()
+    await websocket.accept()    
+    
+    active_connections[receiver_id] = websocket
+    print(f"User {receiver_id} connected")
     
     try:
+        # Fetch the message history for this chat
         messages = await get_message(sender_id, receiver_id)
+        
+        # Pre-process the message history
+        for message in messages:
+            if "_id" in message:
+                message["message_id"] = str(message["_id"])  # Convert _id to string
+                del message["_id"]  # Remove _id to avoid conflicts
+            if "timestamp" in message and isinstance(message["timestamp"], datetime):
+                message["timestamp"] = message["timestamp"].isoformat()  # Convert datetime to string
+            if isinstance(message["content"], ObjectId):
+                message["content"] = str(message["content"])  # Convert ObjectId in content to string
+        
+        print(f"Sending initial messages: {messages}")
         await websocket.send_json({"message": messages})
         
         while True:
-           data = await websocket.receive_text()
-           
-           new_message = {
-               "sender_id": sender_id,
-               "receiver_id": receiver_id,
-               "message": data,
-               "timestamp": datetime.now().isoformat(),
-           }
-           await database["message"].insert_one(new_message)
-           
-           await websocket.send_json({"new_message": new_message})
-           
+            try:
+                content = await websocket.receive_text()  # Receive message content from the client
+                
+                print(f"Received content: {content}")  # Log the entire received content (which might be a JSON object)
+
+                # Parse the received content into a JSON object
+                content_json = json.loads(content)  # Convert the received content into a dictionary
+                message_text = content_json.get('content', '')  # Extract the actual content (message text)
+                image_url = content_json.get('imageUrl', None)  # Get the imageUrl or default to None
+                
+                print(f"Extracted message content: {message_text}, Image URL: {image_url}")
+                
+            except json.JSONDecodeError as e:
+                print(f"Failed to decode content as JSON: {e}")
+                message_text = content  # Fallback to original content if decoding fails
+                image_url = None  # No image URL
+
+            # Create the new message structure
+            new_message = {
+                "sender_id": sender_id,
+                "receiver_id": receiver_id,
+                "content": message_text,  # Store the text message
+                "imageUrl": image_url,  # Explicitly set the imageUrl (null if no image)
+                "timestamp": datetime.now().isoformat(),  # Timestamp of the message
+            }
+
+            # Insert the message into the database
+            result = await database["message"].insert_one(new_message)
+            print(f"Inserted message with ID: {result.inserted_id}")
+            
+            # Add the message ID from the database insert
+            new_message["message_id"] = str(result.inserted_id)  # Convert ObjectId to string
+
+            # Send the new message to the WebSocket client
+            await websocket.send_json({
+                "new_message": {
+                    "message_id": new_message["message_id"],
+                    "sender_id": new_message["sender_id"],
+                    "receiver_id": new_message["receiver_id"],
+                    "content": new_message["content"],  # Send the content
+                    "imageUrl": new_message["imageUrl"],  # Include imageUrl (null if not provided)
+                    "timestamp": new_message["timestamp"],  # Send timestamp
+                }
+            })
+            
     except WebSocketDisconnect:
         print(f"User {sender_id} disconnected")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        del active_connections[receiver_id]
+        print(f"User {receiver_id} disconnected, connection removed")
+
 
 @app.websocket("/ws/messages/test")
 async def websocket_endpoint(websocket: WebSocket):

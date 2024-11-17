@@ -46,8 +46,8 @@ class _LoginViewState extends State<LoginView> {
               // Add your login logic here
               TokenService tokenService = TokenService();
               try {
-                //final currUser = await loginUser("abc@gmail.com", "12345"); //Jason Strong
-                final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
+                final currUser = await loginUser("abc@gmail.com", "12345"); //Jason Strong
+                //final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
                 UserService.setUserId = currUser['user_id'];
                 UserService.setName = currUser['name'];
 
