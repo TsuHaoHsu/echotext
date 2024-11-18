@@ -1,6 +1,7 @@
 import 'package:echotext/models/message.dart';
 import 'package:echotext/requests/fetch_message_stream.dart';
-import 'package:echotext/requests/send_message.dart';
+import 'package:echotext/requests/get_messages.dart';
+import 'package:echotext/services/timestamp_service.dart';
 import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as devtools show log;
@@ -20,11 +21,18 @@ class MessageView extends StatefulWidget {
 
 class _MessageViewState extends State<MessageView> {
   final TextEditingController _textController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
   late WebSocketService _webSocketService;
+
   late String currentUserId = UserService.userId!;
   late String contactId = widget.contactId;
 
   List<Message> messages = []; // List to store messages
+  bool isLoadingMore = false;
+  bool hasMoreMessages = true; // Assume more messages initially
+  int skip = 0; // Tracks how many messages have been loaded
+  int limit = 20; // Number of messages per batch
 
   @override
   void initState() {
@@ -32,8 +40,20 @@ class _MessageViewState extends State<MessageView> {
     // load message
     _webSocketService = WebSocketService(currentUserId, contactId);
 
+    _loadMessages();
+
     // Listen for incoming WebSocket messages
     _listenForMessages();
+
+    // Add a scroll listener for pagination
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+              _scrollController.position.maxScrollExtent &&
+          hasMoreMessages &&
+          !isLoadingMore) {
+        _loadMessages();
+      }
+    });
   }
 
   @override
@@ -41,6 +61,38 @@ class _MessageViewState extends State<MessageView> {
     _textController.dispose();
     _webSocketService.closeConnection();
     super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    if (isLoadingMore) return;
+
+    setState(() {
+      isLoadingMore = true;
+    });
+    try {
+      
+      final newMessages =
+          await getMessages(currentUserId, contactId, skip, limit);
+      setState(() {
+        // Convert each item in newMessages to a Message object
+        List<Message> newMessagesObjects = newMessages.map((messageJson) {
+          return Message.fromJson(messageJson);
+        }).toList();
+        
+        // Insert the converted messages at the start of the list (reverse the order)
+        messages.insertAll(
+            0, newMessagesObjects.reversed); // Add at the beginning of the list
+        skip += newMessagesObjects.length; // Update skip for the next batch
+        hasMoreMessages = newMessagesObjects.length ==
+            limit; // Check if there are more messages to load
+      });
+    } catch (e) {
+      devtools.log('Error loading messages: $e');
+    } finally {
+      setState(() {
+        isLoadingMore = false;
+      });
+    }
   }
 
   void _sendMessage() {
@@ -68,25 +120,26 @@ class _MessageViewState extends State<MessageView> {
     }
   }
 
-void _listenForMessages() {
-  _webSocketService.messages.listen((data) {
-    // Check if 'message' is null or not a List
-    List<dynamic> messageList = data['message'] ?? [];  // Default to an empty list if null
+  void _listenForMessages() {
+    _webSocketService.messages.listen((data) {
+      // Check if 'message' is null or not a List
+      List<dynamic> messageList =
+          data['message'] ?? []; // Default to an empty list if null
 
-    if (messageList.isEmpty) {
-      devtools.log('No new messages received.');
-    } else {
-      // Map each message to a Message object, handling the content properly
-      List<Message> newMessages = messageList.map((messageJson) {
-        return Message.fromJson(messageJson);
-      }).toList();
+      if (messageList.isEmpty) {
+        devtools.log('No new messages received.');
+      } else {
+        // Map each message to a Message object, handling the content properly
+        List<Message> newMessages = messageList.map((messageJson) {
+          return Message.fromJson(messageJson);
+        }).toList();
 
-      setState(() {
-        messages.insertAll(0, newMessages);
-      });
-    }
-  });
-}
+        setState(() {
+          messages.insertAll(0, newMessages);
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +156,7 @@ void _listenForMessages() {
                   )
                 : ListView.builder(
                     reverse: true,
+                    controller: _scrollController,
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
@@ -114,26 +168,42 @@ void _listenForMessages() {
                           alignment: isSentByMe
                               ? Alignment.centerRight
                               : Alignment.centerLeft,
-                          child: ListTile(
-                            title: message.content != null
-                                ? message.content!.startsWith('http')
-                                    ? Image.network(
-                                        message.content!,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          return const Icon(Icons.error);
-                                        },
-                                      )
-                                    : Text(message.content!,
-                                        textAlign: isSentByMe
-                                            ? TextAlign.end
-                                            : TextAlign.start)
-                                : const Text('No content'),
-                            subtitle: Text(message.timestamp.toString(),
-                                textAlign: isSentByMe
-                                    ? TextAlign.end
-                                    : TextAlign.start),
-                          ),
+                          child: Column(
+                              crossAxisAlignment: isSentByMe
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                message.content != null
+                                    ? message.content!.startsWith('http')
+                                        ? Image.network(
+                                            message.content!,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return const Icon(Icons.error);
+                                            },
+                                          )
+                                        : Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8.0, vertical: 4.0),
+                                            decoration: BoxDecoration(
+                                              color: isSentByMe
+                                                  ? Colors.orange[100]
+                                                  : Colors.grey[400],
+                                              borderRadius: BorderRadius.circular(
+                                                  8.0), // Optional: Rounded corners
+                                            ),
+                                            child: Text(message.content!,
+                                                textAlign: isSentByMe
+                                                    ? TextAlign.end
+                                                    : TextAlign.start),
+                                          )
+                                    : const Text('No content'),
+                                Text(formatTimestamp(message.timestamp),
+                                    style: const TextStyle(fontSize: 11.0),
+                                    textAlign: isSentByMe
+                                        ? TextAlign.end
+                                        : TextAlign.start),
+                              ]),
                         ),
                       );
                     },

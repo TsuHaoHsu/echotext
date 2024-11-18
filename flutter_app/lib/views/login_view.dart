@@ -1,15 +1,12 @@
 import 'package:echotext/components/dialog_popup.dart';
 import 'package:echotext/constants/exception.dart';
 import 'package:echotext/constants/routes.dart';
-import 'package:echotext/provider/state_provider.dart';
 import 'package:echotext/requests/get_friend_list.dart';
-import 'package:echotext/requests/get_user_list.dart';
 import 'package:echotext/requests/login_user.dart';
 import 'package:echotext/services/token_service.dart';
 import 'package:echotext/services/user_service.dart';
 import 'dart:developer' as devtools show log;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -46,8 +43,8 @@ class _LoginViewState extends State<LoginView> {
               // Add your login logic here
               TokenService tokenService = TokenService();
               try {
-                final currUser = await loginUser("abc@gmail.com", "12345"); //Jason Strong
-                //final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
+                //final currUser = await loginUser("abc@gmail.com", "12345"); //Jason Strong
+                final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
                 UserService.setUserId = currUser['user_id'];
                 UserService.setName = currUser['name'];
 
