@@ -13,22 +13,6 @@ class WebSocketService {
   Stream<dynamic> get messages =>
       channel.stream.map((event) => json.decode(event));
 
-  // void sendMessage(String content) {
-  //   channel.sink.add(content);
-  // }
-
-  void sendMessage(String senderId, String receiverId, String content) {
-    final message = json.encode({
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'content': content,
-      'timestamp': DateTime.now().toIso8601String(), // Optional timestamp
-    });
-
-    channel.sink.add(message);
-  }
-
-  // Method to close the WebSocket connection
   void closeConnection() {
     channel.sink.close();
   }

@@ -19,18 +19,8 @@ class Message {
   });
 
 factory Message.fromJson(Map<String, dynamic> json) {
-  //devtools.log('Received message JSON: $json');
+  devtools.log('Received message JSON: $json');
 
-  if (json['message_id'] == null ||
-      json['sender_id'] == null ||
-      json['receiver_id'] == null) {
-    //devtools.log(
-    //    'Missing critical fields: ${json['message_id']} ${json['sender_id']} ${json['receiver_id']}');
-    throw const FormatException(
-        'Critical fields are missing in the JSON response');
-  }
-
-  // If content is a stringified JSON object, parse it
   String? content = json['content'];
   if (content != null && content.startsWith("{") && content.endsWith("}")) {
     try {

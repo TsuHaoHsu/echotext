@@ -1,6 +1,6 @@
 import 'package:echotext/constants/routes.dart';
-import 'package:echotext/services/auth_service.dart';
 import 'package:echotext/services/token_service.dart';
+import 'package:echotext/services/user_service.dart';
 import 'package:echotext/views/contact_view.dart';
 import 'package:echotext/views/login_view.dart';
 import 'package:echotext/views/message_view.dart';
@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'EchoText Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
               case ConnectionState.waiting:
                 return const CircularProgressIndicator();
               case ConnectionState.done:
-                if (snapshot.hasData && snapshot.data == true) {
+                if (snapshot.hasData && snapshot.data == true && UserService.userName != null) {
                   return ContactView();
                 } else {
                   return const LoginView();

@@ -22,7 +22,7 @@ Future<List<Map<String, dynamic>>> getMessages(
     if (response.statusCode == 200) {
       // Decode the JSON response
       final data = json.decode(response.body);
-      //devtools.log("Response data: $data");
+      devtools.log("Response data in get messages: $data");
 
       // Directly handle the list response
       if (data is List) {

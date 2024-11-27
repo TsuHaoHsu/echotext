@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, status, Query
 from login_verification import create_login_token
 from fastapi.responses import JSONResponse
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from pymongo import MongoClient
 from typing import List, Dict
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -13,9 +13,12 @@ from login_verification import router as auth_router
 from json import dumps, loads
 from bson import ObjectId
 from fastapi import WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from collections import defaultdict
 import redis
 import bcrypt
 import jwt
+import websockets
 
 app = FastAPI()
 app.include_router(auth_router)
@@ -30,8 +33,8 @@ database = client["Echo_Text_Local"]
 class User(BaseModel):
     name: str
     email: EmailStr
-    password: str
-    isVerified: bool = False
+    password: str = Field(..., min_length=6)
+    isVerified: bool = True
     password_version: int = 1
     
 class UserQuery(BaseModel):
@@ -68,12 +71,13 @@ class Friendship(BaseModel):
     initiated_at: datetime
     accepted_at: Optional[datetime] = None
 
-# def generate_cache_key(sender_id: str, receiver_id: str) -> str:
-#     return f"pending:{min(sender_id, receiver_id)}:{max(sender_id, receiver_id)}"
-
-# async def invalidate_pending_request_cache(sender_id: str, receiver_id: str):
-#     cache_key = generate_cache_key(sender_id, receiver_id)
-#     r.delete(cache_key)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://542b-2407-4d00-3c00-9143-1625-20dc-172-5cd9.ngrok-free.app/"],  # Add your ngrok URL here
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 @app.get("/test/")
 async def test_connection():
@@ -186,22 +190,22 @@ async def login_user(user: UserLogin):
     
 @app.get("/get-message/", response_model=List[Message])
 async def get_message(sender_id: str, receiver_id: str, skip: int = 0, limit: int = 20):
-    
-    
-    
     messages = await database["message"].find({
         "$or": [
             {"sender_id": sender_id, "receiver_id": receiver_id},
             {"sender_id": receiver_id, "receiver_id": sender_id},
         ]
     }).sort("timestamp", -1).skip(skip).limit(limit).to_list(None)
-    
+
     # Convert _id to message_id for all messages
     for message in messages:
-        message["message_id"] = str(message["_id"])  # Convert ObjectId to string
-        del message["_id"]  # Remove the original _id field if it's not needed
+        message["message_id"] = str(message["_id"])
+        del message["_id"]
+        if message.get("imageUrl") is None:
+            message["imageUrl"] = ""  # Replace null with empty string
 
-    return messages
+    # Ensure the response is serialized as expected
+    return [dict(message) for message in messages]  # Explicit conversion to dict
 
 
 @app.post("/create-message/")
@@ -239,61 +243,105 @@ async def create_message(message: Message):
         # Broadcast the new message to the WebSocket
         receiver_websocket = active_connections.get(message.receiver_id)
         if receiver_websocket:
-            await receiver_websocket.send_json({"new_message": message_data})
+            # Iterate over all WebSocket connections for this receiver and send the message
+            for receiver_websocket in receiver_websocket:
+                if isinstance(receiver_websocket, WebSocket):
+                    try:
+                        await receiver_websocket.send_json({"new_message": message_data})
+                    except Exception as e:
+                        print(f"Error sending message to {message.receiver_id}: {e}")
+                        # Handle disconnection or cleanup if needed
+                        active_connections[message.receiver_id].remove(receiver_websocket)
         
         
         return response_message
         
     raise HTTPException(status_code=500, detail="Message could not be created.")
 
-active_connections = {}
+active_connections = defaultdict(list)
 
 @app.websocket("/ws/messages/{sender_id}/{receiver_id}")
 async def websocket_endpoint(websocket: WebSocket, sender_id: str, receiver_id: str):
     await websocket.accept()
-    active_connections[receiver_id] = active_connections.get(receiver_id, []) + [websocket]
-    print(f"User {receiver_id} connected")
-    print(f"Users connected: {active_connections}")
+    
+    print(f"{sender_id} and {receiver_id}")
+    # Add the WebSocket connection to the receiver's list if not already added
+    if websocket not in active_connections[receiver_id]:
+        active_connections[receiver_id].append(websocket)
+        print(f"User {receiver_id} connected. Current connections: {len(active_connections[receiver_id])}")
+        print(f"Active connections keys: {list(active_connections.keys())}")
+    else:
+        print(f"User {receiver_id} already has an active WebSocket connection.")
     
     try:
         # Fetch message history
         messages = await get_message(sender_id, receiver_id)
-        messages = [serialize_message(message) for message in messages]  # Serialize each message
-        await websocket.send_json({"message": messages})
+        serialized_messages = [serialize_message(message) for message in messages]  # Serialize each message
         
-        
+        # Send message history to the new WebSocket connection
+        if receiver_id in active_connections and active_connections[receiver_id]:
+            for receiver_websocket in active_connections[receiver_id]:
+                if isinstance(receiver_websocket, WebSocket):  # Ensure it's a WebSocket object
+                    await receiver_websocket.send_json({"message": serialized_messages})
+                else:
+                    print(f"Invalid connection in active_connections for {receiver_id}")
         while True:
-            content = await websocket.receive_text()
-            content_json = json.loads(content)
-            new_message = {
-                "sender_id": sender_id,
-                "receiver_id": receiver_id,
-                "content": content_json.get("content", ""),
-                "imageUrl": content_json.get("imageUrl"),
-                "timestamp": datetime.now().isoformat(),
-            }
-            
-            # Insert message into the database
-            result = await database["message"].insert_one(new_message)
-            new_message["message_id"] = str(result.inserted_id)  # Convert ObjectId to string
-            new_message = serialize_message(new_message)  # Ensure all fields are JSON-serializable
-            await websocket.send_json({"new_message": new_message})
-
-            # Broadcast to all WebSocket connections for the receiver
-            if receiver_id in active_connections:
-                for conn in list(active_connections[receiver_id]):  # Iterate through receiver's connections
-                    try:
-                        await conn.send_json({"new_message": new_message})
-                    except Exception as e:
-                        print(f"Error sending message to {receiver_id}: {e}")
-                        active_connections[receiver_id].remove(conn)  # Remove failed connection
-                if not active_connections[receiver_id]:  # Clean up if no connections remain
+            try:
+                # Receive a new message from the sender (client)
+                content = await websocket.receive_text()
+                
+                if not content:  # If no content is received, it could indicate a disconnect or issue
+                    print(f"Connection closed by {sender_id} / {receiver_id}")
+                    break
+                
+                print(f"Received message from {sender_id}: {content}")
+                
+                # Parse the received content
+                content_json = json.loads(content)
+                
+                # Construct a new message object
+                new_message = {
+                    "sender_id": sender_id,
+                    "receiver_id": receiver_id,
+                    "content": content_json.get("content", ""),
+                    "imageUrl": content_json.get("imageUrl"),
+                    "timestamp": datetime.now().isoformat(),
+                }
+                
+                # Insert message into the database
+                result = await database["message"].insert_one(new_message)
+                new_message["message_id"] = str(result.inserted_id)  # Convert ObjectId to string
+                serialized_new_message = serialize_message(new_message)  # Ensure all fields are JSON-serializable
+                
+                # Send the newly inserted message to the WebSocket client
+                await websocket.send_json({"new_message": serialized_new_message})
+                
+                # Broadcast the new message to all WebSocket connections for the receiver
+                if receiver_id in active_connections and active_connections[receiver_id]:
+                    for conn in active_connections[receiver_id]:
+                        if isinstance(conn, WebSocket):  # Ensure it is a WebSocket object
+                            try:
+                                print(f"Broadcasting message to {receiver_id}")
+                                await conn.send_json({"new_message": serialized_new_message})
+                            except Exception as e:
+                                print(f"Error sending message to {receiver_id}: {e}")
+                                active_connections[receiver_id].remove(conn)  # Remove failed connection
+                
+                # Clean up if no connections remain for the receiver
+                if not active_connections[receiver_id]:
                     del active_connections[receiver_id]
+                        
+            except WebSocketDisconnect:
+                # Handle WebSocket disconnect: exit the loop and clean up
+                print(f"User {receiver_id} disconnected.")
+                break  # Exit the loop if the connection is closed
 
-    except WebSocketDisconnect:
-        print(f"User {receiver_id} disconnected.")
-    except Exception as e:
-        print(f"Error: {e}")
+            except Exception as e:
+                # Handle other exceptions
+                print(f"Error occurred: {e}")
+                traceback.print_exc()  # Print detailed error traceback
+                break  # Exit the loop if any error occurs
+                
     finally:
         # Remove this WebSocket from active connections
         if receiver_id in active_connections:

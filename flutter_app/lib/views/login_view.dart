@@ -16,6 +16,9 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
+final TextEditingController _passwordController = TextEditingController();
+final TextEditingController _emailController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,16 +30,19 @@ class _LoginViewState extends State<LoginView> {
       body: Padding(
         padding: const EdgeInsets.all(18.0),
         child: Column(children: [
-          const TextField(
-            decoration: InputDecoration(
+          TextField(
+            decoration: const InputDecoration(
               hintText: 'Username here',
             ),
+            controller: _emailController,
           ),
-          const TextField(
-            decoration: InputDecoration(
+          TextField(
+            decoration: const InputDecoration(
               hintText: 'Password here',
             ),
+            controller: _passwordController,
           ),
+          
           const SizedBox(height: 32.0), // Increase space before the button
           ElevatedButton(
             onPressed: () async {
@@ -45,6 +51,7 @@ class _LoginViewState extends State<LoginView> {
               try {
                 //final currUser = await loginUser("abc@gmail.com", "12345"); //Jason Strong
                 final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
+                //final currUser = await loginUser(_emailController.text,_passwordController.text);
                 UserService.setUserId = currUser['user_id'];
                 UserService.setName = currUser['name'];
 

@@ -40,20 +40,38 @@ Future<void> createUser(
       final errorData = jsonDecode(response.body);
       devtools.log('Full error data: ${errorData.toString()}');
 
-      if (errorData['detail'].trim() ==
-          'User with this email already exists.') {
-        throw EmailAlreadyInUseException();
+      if (errorData['detail']
+          .toString()
+          .contains('not a valid email address')) {
+        throw InvalidEmailException(); // Custom exception for invalid email format
+      } else if (errorData['detail']
+          .toString()
+          .contains('User with this email already exists.')) {
+        throw EmailAlreadyInUseException(); // Existing case
+      } else if (errorData['detail'] is List &&
+          errorData['detail'][0]['msg']
+              .toString()
+              .contains('String should have at least 6 characters')) {
+        throw WeakPasswordException();
       } else {
-        devtools.log(errorData.toString());
-        throw ConnectionTimedOutException(); // Optionally throw a general error
+        // Handle other specific server-side errors here if needed
+        devtools.log('Unhandled error: ${errorData.toString()}');
+        throw GenericException(); // A more general server-side error
       }
     }
   } catch (e) {
-    if (e is! EmailAlreadyInUseException) {
-      devtools.log('Error: ${e.toString()}');
-      throw ConnectionTimedOutException();
-    } else {
+    if (e is EmailAlreadyInUseException) {
+      rethrow; // Let the specific exception propagate
+    } else if (e is InvalidEmailException) {
       rethrow;
+    } else if (e is WeakPasswordException) {
+      rethrow;
+    } else if (e is ConnectionTimedOutException) {
+      devtools.log('Error: Timeout occurred: ${e.toString()}');
+      throw ConnectionTimedOutException(); // Explicit timeout handling
+    } else {
+      devtools.log('Unexpected Error: ${e.toString()}');
+      throw GenericException(); // Catch-all for other unexpected errors
     }
   }
 }

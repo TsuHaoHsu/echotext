@@ -1,6 +1,6 @@
 import 'package:echotext/models/message.dart';
 import 'package:echotext/requests/fetch_message_stream.dart';
-import 'package:echotext/requests/get_messages.dart';
+import 'package:echotext/requests/send_message.dart';
 import 'package:echotext/services/timestamp_service.dart';
 import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';
@@ -40,20 +40,8 @@ class _MessageViewState extends State<MessageView> {
     // load message
     _webSocketService = WebSocketService(currentUserId, contactId);
 
-    _loadMessages();
-
     // Listen for incoming WebSocket messages
     _listenForMessages();
-
-    // Add a scroll listener for pagination
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels >=
-              _scrollController.position.maxScrollExtent &&
-          hasMoreMessages &&
-          !isLoadingMore) {
-        _loadMessages();
-      }
-    });
   }
 
   @override
@@ -63,83 +51,51 @@ class _MessageViewState extends State<MessageView> {
     super.dispose();
   }
 
-  Future<void> _loadMessages() async {
-    if (isLoadingMore) return;
+void _listenForMessages() {
+  _webSocketService.messages.listen((data) {
+    devtools.log('Received data: $data');
 
-    setState(() {
-      isLoadingMore = true;
-    });
-    try {
-      
-      final newMessages =
-          await getMessages(currentUserId, contactId, skip, limit);
-      setState(() {
-        // Convert each item in newMessages to a Message object
-        List<Message> newMessagesObjects = newMessages.map((messageJson) {
-          return Message.fromJson(messageJson);
-        }).toList();
-        
-        // Insert the converted messages at the start of the list (reverse the order)
-        messages.insertAll(
-            0, newMessagesObjects.reversed); // Add at the beginning of the list
-        skip += newMessagesObjects.length; // Update skip for the next batch
-        hasMoreMessages = newMessagesObjects.length ==
-            limit; // Check if there are more messages to load
-      });
-    } catch (e) {
-      devtools.log('Error loading messages: $e');
-    } finally {
-      setState(() {
-        isLoadingMore = false;
-      });
-    }
-  }
+    // Handle new message
+    if (data.containsKey('new_message')) {
+      var newMessage = data['new_message'];
+      if (newMessage is Map) {
+        devtools.log('Single new message received: $newMessage');
+        // Wrap the new message in a list
+        List<dynamic> messageList = [newMessage];
 
-  void _sendMessage() {
-    final content = _textController.text.trim();
-
-    if (content.isNotEmpty) {
-      _textController.clear();
-
-      // Disable input while waiting for server confirmation
-      setState(() {
-        messages.insert(
-          0,
-          Message(
-            messageId: 'loading...', // Temporary placeholder
-            senderId: currentUserId,
-            receiverId: contactId,
-            content: content,
-            timestamp: DateTime.now(),
-          ),
-        );
-      });
-
-      // Send message via WebSocket
-      _webSocketService.sendMessage(currentUserId, contactId, content);
-    }
-  }
-
-  void _listenForMessages() {
-    _webSocketService.messages.listen((data) {
-      // Check if 'message' is null or not a List
-      List<dynamic> messageList =
-          data['message'] ?? []; // Default to an empty list if null
-
-      if (messageList.isEmpty) {
-        devtools.log('No new messages received.');
-      } else {
-        // Map each message to a Message object, handling the content properly
+        // Process the list of new messages
         List<Message> newMessages = messageList.map((messageJson) {
           return Message.fromJson(messageJson);
         }).toList();
 
         setState(() {
-          messages.insertAll(0, newMessages);
+          messages.insertAll(0, newMessages);  // Insert new messages at the top
         });
+      } else {
+        devtools.log('Unexpected format for new_message: ${newMessage.runtimeType}');
       }
-    });
-  }
+    }
+
+    // Handle old messages (if any)
+    if (data.containsKey('message')) {
+      var oldMessage = data['message'];
+      if (oldMessage is List) {
+        devtools.log('Old message received: $oldMessage');
+        // Process the old messages
+        List<Message> oldMessagesList = oldMessage.map((messageJson) {
+          return Message.fromJson(messageJson);
+        }).toList();
+
+        setState(() {
+          messages.addAll(oldMessagesList);  // Add old messages at the bottom
+        });
+      } else {
+        devtools.log('Unexpected format for message: ${oldMessage.runtimeType}');
+      }
+    }
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +179,10 @@ class _MessageViewState extends State<MessageView> {
               ),
             ),
             IconButton(
-              onPressed: _sendMessage,
+              onPressed: () {
+                final content = _textController.text.trim();
+                sendMessage(currentUserId, contactId, content);
+              },
               icon: const Icon(Icons.send),
             ),
           ],

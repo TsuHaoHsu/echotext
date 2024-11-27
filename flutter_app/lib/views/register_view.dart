@@ -59,9 +59,9 @@ class _RegisterViewState extends State<RegisterView> {
                   //createUser(context,_nameController.text,_nameController.text,_passwordController.text,);
                   try {
                     await createUser(
-                      "cba@gmail.com",
-                      "Hank Strong",
-                      "12345",
+                      _emailController.text,
+                      _nameController.text,
+                      _passwordController.text,
                     );
                     if (!context.mounted) return;
                     await dialogPopup(
@@ -81,6 +81,21 @@ class _RegisterViewState extends State<RegisterView> {
                     if (!context.mounted) return;
                     await dialogPopup(
                         context, "An error occurred", "Connection timed out.");
+                  } on InvalidEmailException {
+                    devtools.log('Caught Invalid Email in register_view');
+                    if (!context.mounted) return;
+                    await dialogPopup(
+                        context, "An error occurred", "Invalid Email Format.");
+                  } on WeakPasswordException {
+                    devtools
+                        .log('Caught WeakPasswordException in register_view');
+                    if (!context.mounted) return;
+                    await dialogPopup(context, "An error occurred",
+                        "Password must have at least 6 characters.");
+                  } on GenericException {
+                    if (!context.mounted) return;
+                    await dialogPopup(
+                        context, "An error occurred", "Generic Error");
                   }
                 },
                 style: ElevatedButton.styleFrom(
