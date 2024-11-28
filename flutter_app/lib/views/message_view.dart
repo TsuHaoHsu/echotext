@@ -1,5 +1,5 @@
 import 'package:echotext/models/message.dart';
-import 'package:echotext/requests/fetch_message_stream.dart';
+import 'package:echotext/services/websocket_service.dart';
 import 'package:echotext/requests/send_message.dart';
 import 'package:echotext/services/timestamp_service.dart';
 import 'package:echotext/services/user_service.dart';
@@ -51,54 +51,54 @@ class _MessageViewState extends State<MessageView> {
     super.dispose();
   }
 
-void _listenForMessages() {
-  _webSocketService.messages.listen((data) {
-    devtools.log('Received data: $data');
+  // Function to handle incoming messages
+  void _listenForMessages() {
+    _webSocketService.messages.listen((List<dynamic> data) {
+      devtools.log('Received new message(s): $data');
 
-    // Handle new message
-    if (data.containsKey('new_message')) {
-      var newMessage = data['new_message'];
-      if (newMessage is Map) {
-        devtools.log('Single new message received: $newMessage');
-        // Wrap the new message in a list
-        List<dynamic> messageList = [newMessage];
-
-        // Process the list of new messages
-        List<Message> newMessages = messageList.map((messageJson) {
+      try {
+        // Process the incoming messages and add them to the list
+        List<Message> newMessages = data.map((messageJson) {
           return Message.fromJson(messageJson);
         }).toList();
 
+        // Update the UI with the new messages
         setState(() {
-          messages.insertAll(0, newMessages);  // Insert new messages at the top
+          // Add new messages only if they're not already in the list
+          for (var newMessage in newMessages) {
+            if (!messages.any((msg) => msg.messageId == newMessage.messageId)) {
+              messages.insert(0, newMessage); // Insert at the top (reverse order)
+            }
+          }
         });
-      } else {
-        devtools.log('Unexpected format for new_message: ${newMessage.runtimeType}');
+
+        // Scroll to the bottom when a new message arrives
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      } catch (e) {
+        devtools.log('Error processing new message: $e');
       }
+    });
+  }
+
+@override
+Widget build(BuildContext context) {
+  // Listen for new messages from WebSocket
+
+    // Scroll to the bottom when a new message is added
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
-
-    // Handle old messages (if any)
-    if (data.containsKey('message')) {
-      var oldMessage = data['message'];
-      if (oldMessage is List) {
-        devtools.log('Old message received: $oldMessage');
-        // Process the old messages
-        List<Message> oldMessagesList = oldMessage.map((messageJson) {
-          return Message.fromJson(messageJson);
-        }).toList();
-
-        setState(() {
-          messages.addAll(oldMessagesList);  // Add old messages at the bottom
-        });
-      } else {
-        devtools.log('Unexpected format for message: ${oldMessage.runtimeType}');
-      }
-    }
-  });
-}
-
-
-  @override
-  Widget build(BuildContext context) {
+  
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.contactName),
@@ -181,7 +181,16 @@ void _listenForMessages() {
             IconButton(
               onPressed: () {
                 final content = _textController.text.trim();
-                sendMessage(currentUserId, contactId, content);
+                if (content.isNotEmpty) {
+                  _webSocketService.sendMessage(
+                    senderId:
+                        currentUserId, // Replace with the actual current user ID
+                    receiverId: contactId, // Replace with the actual contact ID
+                    content: content,
+                  );
+                  _textController
+                      .clear(); // Clear the input field after sending
+                }
               },
               icon: const Icon(Icons.send),
             ),
