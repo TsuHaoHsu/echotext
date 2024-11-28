@@ -89,7 +89,7 @@ class _MessageViewState extends State<MessageView> {
 @override
 Widget build(BuildContext context) {
   // Listen for new messages from WebSocket
-
+    double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     // Scroll to the bottom when a new message is added
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -99,7 +99,7 @@ Widget build(BuildContext context) {
       );
     }
   
-    return Scaffold(
+    return Scaffold(  
       appBar: AppBar(
         title: Text(widget.contactName),
       ),
@@ -167,34 +167,37 @@ Widget build(BuildContext context) {
           )
         ],
       ),
-      bottomNavigationBar: BottomAppBar(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                decoration: const InputDecoration(
-                    hintText: 'Type a message...',
-                    border: OutlineInputBorder()),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.only(bottom: keyboardHeight),
+        child: BottomAppBar(
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _textController,
+                  decoration: const InputDecoration(
+                      hintText: 'Type a message...',
+                      border: OutlineInputBorder()),
+                ),
               ),
-            ),
-            IconButton(
-              onPressed: () {
-                final content = _textController.text.trim();
-                if (content.isNotEmpty) {
-                  _webSocketService.sendMessage(
-                    senderId:
-                        currentUserId, // Replace with the actual current user ID
-                    receiverId: contactId, // Replace with the actual contact ID
-                    content: content,
-                  );
-                  _textController
-                      .clear(); // Clear the input field after sending
-                }
-              },
-              icon: const Icon(Icons.send),
-            ),
-          ],
+              IconButton(
+                onPressed: () {
+                  final content = _textController.text.trim();
+                  if (content.isNotEmpty) {
+                    _webSocketService.sendMessage(
+                      senderId:
+                          currentUserId, // Replace with the actual current user ID
+                      receiverId: contactId, // Replace with the actual contact ID
+                      content: content,
+                    );
+                    _textController
+                        .clear(); // Clear the input field after sending
+                  }
+                },
+                icon: const Icon(Icons.send),
+              ),
+            ],
+          ),
         ),
       ),
     );
