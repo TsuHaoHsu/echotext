@@ -31,6 +31,9 @@ migrate_working_dir/
 .pub/
 /build/
 
+# Fastapi related
+/fastapi/venv/
+
 # Symbolication related
 app.*.symbols
 
