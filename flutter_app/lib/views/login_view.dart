@@ -50,8 +50,8 @@ final TextEditingController _emailController = TextEditingController();
               TokenService tokenService = TokenService();
               try {
                 //final currUser = await loginUser("abc@gmail.com", "12345"); //Jason Strong
-                final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
-                //final currUser = await loginUser(_emailController.text,_passwordController.text);
+                //final currUser = await loginUser("cba@gmail.com", "12345"); //Hank Strong
+                final currUser = await loginUser(_emailController.text,_passwordController.text);
                 UserService.setUserId = currUser['user_id'];
                 UserService.setName = currUser['name'];
 

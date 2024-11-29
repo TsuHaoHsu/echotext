@@ -1,0 +1,1 @@
+docker run -d -p 8000:8000 --name my_fastapi_container -e MONGODB_URL="mongodb://192.168.0.195:27017" echotext_app
