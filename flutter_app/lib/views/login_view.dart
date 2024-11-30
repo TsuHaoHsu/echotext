@@ -41,6 +41,7 @@ final TextEditingController _emailController = TextEditingController();
               hintText: 'Password here',
             ),
             controller: _passwordController,
+            obscureText: true,
           ),
           
           const SizedBox(height: 32.0), // Increase space before the button

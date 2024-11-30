@@ -30,8 +30,37 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/lib/constants/uri.dart
+
+# Build folders
+build/
+android/app/build/
+ios/Pods/
+windows/build/
+../fastapi/main.py
+
+# Ignore Flutter build outputs
+build/
+.dart_tool/
+.packages
+pubspec.lock
+
+# Ignore platform-specific directories for Flutter
+ios/Flutter/Flutter.podspec
+ios/Podfile.lock
+macos/Podfile.lock
+android/.gradle/
+android/app/build/
+windows/Runner/GeneratedPluginRegistrant.h
+windows/Runner/GeneratedPluginRegistrant.cpp
+/linux/
+/macos/
+/windows/
+
 
 # Fastapi related
+../fastapi/__pycache__/
+../fastapi/main.py
 venv/
 
 # Symbolication related
