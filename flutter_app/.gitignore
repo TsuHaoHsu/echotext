@@ -37,7 +37,6 @@ build/
 android/app/build/
 ios/Pods/
 windows/build/
-../fastapi/main.py
 
 # Ignore Flutter build outputs
 build/
