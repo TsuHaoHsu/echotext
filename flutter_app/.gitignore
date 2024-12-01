@@ -30,7 +30,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-/lib/constants/uri.dart
+lib/constants/uri.dart
 
 # Build folders
 build/

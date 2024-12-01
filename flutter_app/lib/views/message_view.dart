@@ -1,6 +1,5 @@
 import 'package:echotext/models/message.dart';
 import 'package:echotext/services/websocket_service.dart';
-import 'package:echotext/requests/send_message.dart';
 import 'package:echotext/services/timestamp_service.dart';
 import 'package:echotext/services/user_service.dart';
 import 'package:flutter/material.dart';

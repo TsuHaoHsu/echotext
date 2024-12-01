@@ -24,56 +24,23 @@ class WebSocketService {
           if (data.containsKey("message")) {
             final newMessages = data["message"];
             if (newMessages is List) {
-              // Filter messages by sender and receiver IDs
-              final filteredMessages = newMessages.where((msg) {
-                return (msg['sender_id'] == senderId &&
-                        msg['receiver_id'] == receiverId) ||
-                    (msg['sender_id'] == receiverId &&
-                        msg['receiver_id'] == senderId);
-              }).toList();
-
-              devtools.log("Filtered messages: $filteredMessages");
-              if (filteredMessages.isNotEmpty) {
-                _controller.add(filteredMessages);
-              }
+              devtools.log("Messages: $newMessages");
+              _controller.add(
+                  newMessages); // Send all messages directly to the controller
             } else if (newMessages is Map<String, dynamic>) {
-              // Single message scenario, validate sender and receiver
-              if ((newMessages['sender_id'] == senderId &&
-                      newMessages['receiver_id'] == receiverId) ||
-                  (newMessages['sender_id'] == receiverId &&
-                      newMessages['receiver_id'] == senderId)) {
-                devtools.log("Filtered single message: $newMessages");
-                _controller.add([newMessages]); // Wrap single message in a list
-              }
+              devtools.log("Single message: $newMessages");
+              _controller.add([newMessages]); // Wrap single message in a list
             }
           } else if (data.containsKey("new_message")) {
             final newMessage = data["new_message"];
             if (newMessage is Map<String, dynamic>) {
-              // Handle single new message and filter
-              if ((newMessage['sender_id'] == senderId &&
-                      newMessage['receiver_id'] == receiverId) ||
-                  (newMessage['sender_id'] == receiverId &&
-                      newMessage['receiver_id'] == senderId)) {
-                devtools.log("Filtered new message: $newMessage");
-                _controller.add([newMessage]); // Wrap single message in a list
-              }}}
-            // } else if (newMessage is List) {
-            //   // Handle multiple new messages and filter
-            //   final filteredNewMessages = newMessage.where((msg) {
-            //     return (msg['sender_id'] == senderId &&
-            //             msg['receiver_id'] == receiverId) ||
-            //         (msg['sender_id'] == receiverId &&
-            //             msg['receiver_id'] == senderId);
-            //   }).toList();
-
-            //   devtools.log("Filtered new messages: $filteredNewMessages");
-            //   if (filteredNewMessages.isNotEmpty) {
-            //     _controller.add(filteredNewMessages);
-            //   }
-            
-          
+              devtools.log("New message: $newMessage");
+              _controller
+                  .add([newMessage]); // Wrap single new message in a list
+            }
+          }
         } catch (e) {
-          devtools.log("Error decoding WebSocket event: $e");
+          devtools.log("Error decoding WebSocket message: $e");
         }
       },
       onError: (error) {

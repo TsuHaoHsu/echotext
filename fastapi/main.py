@@ -217,51 +217,46 @@ async def websocket_endpoint(websocket: WebSocket, sender_id: str, receiver_id: 
     await websocket.accept()
 
     print(f"WebSocket connected: Sender {sender_id}, Receiver {receiver_id}")
-    # Ensure the receiver_id exists in active_connections
-    if receiver_id not in active_connections:
-        active_connections[receiver_id] = []
+    
+    connection_key_sender_to_receiver = (sender_id, receiver_id)
+    connection_key_receiver_to_sender = (receiver_id, sender_id)
+
+    # Ensure the connection key exists in active_connections for both sender-to-receiver and receiver-to-sender
+    if connection_key_sender_to_receiver not in active_connections:
+        active_connections[connection_key_sender_to_receiver] = []
+
+    if connection_key_receiver_to_sender not in active_connections:
+        active_connections[connection_key_receiver_to_sender] = []
         
-    # Add the WebSocket connection to the receiver's list if not already added ##############
-    # if websocket not in active_connections[receiver_id]:
-    #     active_connections[str(receiver_id)].append(websocket)
-    #     print(f"User {receiver_id} connected. Current connections: {len(active_connections[receiver_id])}")
-    #     print(f"Active connections keys: {list(active_connections.keys())}")
-        
-        # Add the WebSocket connection to the receiver's list if not already added ##############v2
-    if websocket not in active_connections[receiver_id]:
-        active_connections[receiver_id].append(websocket)
-        print(f"User {receiver_id} connected. Current connections: {len(active_connections[receiver_id])}")
-        print(f"Active connections keys: {list(active_connections.keys())}")
-
-    # if receiver_id not in active_connections:
-    #     active_connections[receiver_id] = []
-    # active_connections[receiver_id].append(websocket)
-    # print(f"User {receiver_id} connected. Current connections: {len(active_connections[receiver_id])}")
-
-    # Add connection with metadata
-    # if receiver_id not in active_connections:
-    #     active_connections[receiver_id] = []
-
-    # Avoid duplicate WebSocket entries for the same pair
-    # if not any(conn_info["websocket"] == websocket for conn_info in active_connections[receiver_id]):
-    #     chat_pair = tuple(sorted([sender_id, receiver_id]))
-    #     active_connections[receiver_id].append({"websocket": websocket, "chat_pair": chat_pair})
-    #     print(f"Connection established {websocket}: {sender_id} -> {receiver_id}")
+    # Add the WebSocket connection to both the sender-to-receiver and receiver-to-sender lists
+    active_connections[connection_key_sender_to_receiver].append({
+        'websocket': websocket,
+        'sender_id': sender_id,
+        'receiver_id': receiver_id
+    })
+    active_connections[connection_key_receiver_to_sender].append({
+        'websocket': websocket,
+        'sender_id': sender_id,
+        'receiver_id': receiver_id
+    })
+    
+    print(f"Connection added: Sender {sender_id}, Receiver {receiver_id}")
+    print(active_connections)
 
     try:
         # Fetch message history
         messages = await get_message(sender_id, receiver_id)
-        #print(f"Fetched messages for {sender_id} -> {receiver_id}: {messages}")
         serialized_messages = [serialize_message(message) for message in messages]
-
-        # Send message history to receiver's WebSocket(s)
-        for conn_info in active_connections.get(receiver_id, []):
-            #websocket = conn_info["websocket"]
-            try:
-                await conn_info.send_json({"message": serialized_messages})
-                print(f"Sent message history to WebSocket {id(websocket)} for {receiver_id}")
-            except Exception as e:
-                print(f"Error sending message history: {e}")
+        
+        # Send message history to both directions' WebSocket(s)
+        for connection_key in [connection_key_sender_to_receiver, connection_key_receiver_to_sender]:
+            if connection_key in active_connections:
+                for connection in active_connections[connection_key]:
+                    try:
+                        ws = connection['websocket']
+                        await ws.send_json({"message": serialized_messages})
+                    except Exception as e:
+                        print(f"Error sending message history: {e}")
 
         while True:
             try:
@@ -282,26 +277,14 @@ async def websocket_endpoint(websocket: WebSocket, sender_id: str, receiver_id: 
                 result = await database["message"].insert_one(new_message)
                 new_message["message_id"] = str(result.inserted_id)  # Convert ObjectId to string
                 serialized_new_message = serialize_message(new_message)
-                #print(f"Serialized new message: {serialized_new_message}")
-
-                # Send the message to the sender WebSocket
-                await websocket.send_json({"new_message": serialized_new_message})
-                # print(f"Sent the inserted message to sender: {sender_id}")
-                
-                # print(serialized_new_message)
-                for conn in active_connections.values():############################
-                    # print(f"conn is {conn}")
-                    for ws in conn:
-                        # print(f"ws is {ws}")
-                        # print(f"type of ws: {type(ws)}")
-                        try:
-                            await ws.send_json({"new_message": serialized_new_message})
-                        except Exception as e:
-                            print(f"Test message failed: {e}")
+                        
+                # Send message to both side
+                for connection_key in [connection_key_sender_to_receiver, connection_key_receiver_to_sender]:
+                    if connection_key in active_connections:
+                        for ws in active_connections[connection_key]:
+                            await ws['websocket'].send_json({"new_message": serialized_new_message})
                             
-                #Broadcast the new message to all WebSocket connections for the receiver
-                # Assuming `active_connections` stores connections by receiver ID
-                
+                            
                 print(f"Active connections: {active_connections}")
                 print(type(active_connections))
 
@@ -315,14 +298,15 @@ async def websocket_endpoint(websocket: WebSocket, sender_id: str, receiver_id: 
                 break
 
     finally:
-        # Remove this WebSocket from active connections
-        if receiver_id in active_connections:
-            active_connections[receiver_id] = [
-                conn for conn in active_connections[receiver_id] if conn != websocket
-            ]
-            if not active_connections[receiver_id]:
-                del active_connections[receiver_id]
-                print(f"Final cleanup: Removed {receiver_id} from active connections.")
+        # Remove this WebSocket from both sender-to-receiver and receiver-to-sender active connections
+        for connection_key in [connection_key_sender_to_receiver, connection_key_receiver_to_sender]:
+            if connection_key in active_connections:
+                active_connections[connection_key] = [
+                    conn for conn in active_connections[connection_key] if conn['websocket'] != websocket
+                ]
+                if not active_connections[connection_key]:
+                    del active_connections[connection_key]
+                    print(f"Final cleanup: Removed {connection_key} from active connections.")
 
 
 def serialize_message(message):

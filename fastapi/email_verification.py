@@ -3,7 +3,7 @@ from sendgrid.helpers.mail import Mail, Email, To, Content
 import jwt # To generate unique key
 import sendgrid
 
-SENDGRID_API_KEY = "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"
+SENDGRID_API_KEY = ""
 EXPIRATION = datetime.now() + timedelta(hours=1)
 SECRET_KEY = "JasonSuperStrong"
 
@@ -17,7 +17,7 @@ def generate_verification_token(email: str): # for email verification
     
 def send_verification_email(email: str, token: str):
     # Construct the verification URL
-    verification_url = f"https://cefa-2407-4d00-3c00-9143-1da0-725-4097-7a67.ngrok-free.app/verify/{token}"
+    verification_url = f"{uriHTTP}verify/{token}"
     
     subject = "Please verify your Email Address"
     body = f"Click the following link to verify your email address: {verification_url}"

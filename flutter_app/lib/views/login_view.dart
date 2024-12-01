@@ -50,9 +50,7 @@ final TextEditingController _emailController = TextEditingController();
               // Add your login logic here
               TokenService tokenService = TokenService();
               try {
-                //final currUser = await loginUser("abc@gmail.com", "123456"); //Jason Strong
-                final currUser = await loginUser("cba@gmail.com", "123456"); //Hank Strong
-                //final currUser = await loginUser(_emailController.text,_passwordController.text);
+                final currUser = await loginUser(_emailController.text,_passwordController.text);
                 UserService.setUserId = currUser['user_id'];
                 UserService.setName = currUser['name'];
 
@@ -92,7 +90,7 @@ final TextEditingController _emailController = TextEditingController();
               } catch (e) {
                 if (!context.mounted) return;
                 await dialogPopup(context, "An error occurred",
-                    "FastAPI offline, Please try again later.");
+                    "FastAPI or Ngrok offline, Please try again later.");
               };
 
             },

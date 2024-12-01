@@ -63,6 +63,10 @@ class _ContactViewState extends State<ContactView> {
     }
   }
 
+  void listenForChanges(){
+    // wip
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
