@@ -26,7 +26,7 @@ class WebSocketService {
             if (newMessages is List) {
               devtools.log("Messages: $newMessages");
               _controller.add(
-                  newMessages); // Send all messages directly to the controller
+                  newMessages.reversed.toList()); // Send all messages directly to the controller
             } else if (newMessages is Map<String, dynamic>) {
               devtools.log("Single message: $newMessages");
               _controller.add([newMessages]); // Wrap single message in a list
