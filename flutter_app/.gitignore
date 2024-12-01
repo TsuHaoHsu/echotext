@@ -61,6 +61,7 @@ windows/Runner/GeneratedPluginRegistrant.cpp
 ../fastapi/__pycache__/
 ../fastapi/main.py
 venv/
+../fastapi/db.py
 
 # Symbolication related
 app.*.symbols
