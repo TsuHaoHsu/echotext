@@ -61,3 +61,6 @@ if you run into any problem email me @ tsuhaohsu@gmail.com
 Acknowledgments
 Thank you to the Flutter and FastAPI communities for their great frameworks.
 Icons and other assets are sourced from FontAwesome and Icons8.
+
+License
+This project is licensed under the MIT License - see the LICENSE file for details.
