@@ -34,7 +34,7 @@ class _ContactPopupState extends State<ContactPopup> {
   late String currentUserId = UserService.userId!; // this user
   late String currentUserName = UserService.userName!;
   String _buttonText = 'Send Request';
-  IconData _buttonIcon = Icons.person_add_sharp;
+  IconData? _buttonIcon;
   late String _friendShipId;
   bool _isButtonEnabled = true;
 
@@ -92,12 +92,16 @@ class _ContactPopupState extends State<ContactPopup> {
         }
       } else if (_buttonText == 'Remove friend') {
         if (!context.mounted) return;
-        await dialogPopup(context, 'Caution', "Do you want to remove $name as friend?", onAccept: () async {
-        await deleteFriend(_friendShipId);
-        await _checkRelationShipStatus(); // Recheck after removal
-        widget.onFriendListUpdated(); // update friend list call back
-        },
-        onReject: (){},
+        await dialogPopup(
+          context,
+          'Caution',
+          "Do you want to remove $name as friend?",
+          onAccept: () async {
+            await deleteFriend(_friendShipId);
+            await _checkRelationShipStatus(); // Recheck after removal
+            widget.onFriendListUpdated(); // update friend list call back
+          },
+          onReject: () {},
         );
       } else if (_buttonText == 'Manage friend request') {
         devtools.log(_buttonText);
@@ -108,7 +112,8 @@ class _ContactPopupState extends State<ContactPopup> {
           'Friend Request',
           'Do you want to accept $name\'s friend request?',
           onAccept: () async {
-            await acceptFriendRequest(currentUserId, currentUserName ,widget.userId);
+            await acceptFriendRequest(
+                currentUserId, currentUserName, widget.userId);
             await _checkRelationShipStatus(); // Recheck after removal
             widget.onFriendListUpdated(); // update friend list call back
           },
@@ -160,6 +165,9 @@ class _ContactPopupState extends State<ContactPopup> {
       //devtools.log('receiver_id: ${pendingRequest['receiver_id']}');
 
       setState(() {
+        // Default state: no text or icon
+        _buttonText = '';
+        _buttonIcon = null;
         if (isFriend) {
           // if profile is your friend's
           _friendShipId = friend['friendship_id'];

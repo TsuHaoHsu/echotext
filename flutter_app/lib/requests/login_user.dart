@@ -66,6 +66,5 @@ Future <Map<String,dynamic>> loginUser(
     devtools.log(e.toString());
     rethrow;
   }
-  // Add a throw statement at the end in case the function reaches here.
   throw Exception("Unexpected error during login");
 }

@@ -74,14 +74,6 @@ class Friendship(BaseModel):
     initiated_at: datetime
     accepted_at: Optional[datetime] = None
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["https://a026-2407-4d00-3c00-9143-add2-a8fb-150b-cdd5.ngrok-free.app/"],  # Add your ngrok URL here
-#     allow_credentials=True,
-#     allow_methods=["*"],  # Allows all HTTP methods
-#     allow_headers=["*"],  # Allows all headers
-# )
-
 @app.get("/test/")
 async def test_connection():
     try:

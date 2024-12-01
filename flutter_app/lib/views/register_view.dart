@@ -16,6 +16,7 @@ class _RegisterViewState extends State<RegisterView> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -55,50 +56,57 @@ class _RegisterViewState extends State<RegisterView> {
               ),
               const SizedBox(height: 32.0), // Increase space before the button
               ElevatedButton(
-                onPressed: () async {
-                  // Add your login logic here
-                  //createUser(context,_nameController.text,_nameController.text,_passwordController.text,);
-                  try {
-                    await createUser(
-                      _emailController.text,
-                      _nameController.text,
-                      _passwordController.text,
-                    );
-                    if (!context.mounted) return;
-                    await dialogPopup(
-                        context, "Success!", "Account has been created.");
-                    if (!context.mounted) return;
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      loginRoute,
-                      (Route<dynamic> route) => false,
-                    );
-                  } on EmailAlreadyInUseException {
-                    devtools.log(
-                        'Caught EmailAlreadyInUseException in register_view');
-                    if (!context.mounted) return;
-                    await dialogPopup(
-                        context, "An error occurred", "Email already in use.");
-                  } on ConnectionTimedOutException {
-                    if (!context.mounted) return;
-                    await dialogPopup(
-                        context, "An error occurred", "Connection timed out.");
-                  } on InvalidEmailException {
-                    devtools.log('Caught Invalid Email in register_view');
-                    if (!context.mounted) return;
-                    await dialogPopup(
-                        context, "An error occurred", "Invalid Email Format.");
-                  } on WeakPasswordException {
-                    devtools
-                        .log('Caught WeakPasswordException in register_view');
-                    if (!context.mounted) return;
-                    await dialogPopup(context, "An error occurred",
-                        "Password must have at least 6 characters.");
-                  } on GenericException {
-                    if (!context.mounted) return;
-                    await dialogPopup(
-                        context, "An error occurred", "Generic Error");
-                  }
-                },
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState((){
+                          _isLoading = true;
+                        });
+                        try {
+                          await createUser(
+                            _emailController.text,
+                            _nameController.text,
+                            _passwordController.text,
+                          );
+                          if (!context.mounted) return;
+                          await dialogPopup(
+                              context, "Success!", "Account has been created.");
+                          if (!context.mounted) return;
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            loginRoute,
+                            (Route<dynamic> route) => false,
+                          );
+                        } on EmailAlreadyInUseException {
+                          devtools.log(
+                              'Caught EmailAlreadyInUseException in register_view');
+                          if (!context.mounted) return;
+                          await dialogPopup(context, "An error occurred",
+                              "Email already in use.");
+                        } on ConnectionTimedOutException {
+                          if (!context.mounted) return;
+                          await dialogPopup(context, "An error occurred",
+                              "Connection timed out.");
+                        } on InvalidEmailException {
+                          devtools.log('Caught Invalid Email in register_view');
+                          if (!context.mounted) return;
+                          await dialogPopup(context, "An error occurred",
+                              "Invalid Email Format.");
+                        } on WeakPasswordException {
+                          devtools.log(
+                              'Caught WeakPasswordException in register_view');
+                          if (!context.mounted) return;
+                          await dialogPopup(context, "An error occurred",
+                              "Password must have at least 6 characters.");
+                        } on GenericException {
+                          if (!context.mounted) return;
+                          await dialogPopup(
+                              context, "An error occurred", "Generic Error");
+                        } finally {
+                        setState((){
+                          _isLoading = false;
+                        });
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.deepPurple, // Text color
@@ -109,7 +117,11 @@ class _RegisterViewState extends State<RegisterView> {
                   ),
                   elevation: 5, // Shadow effect
                 ),
-                child: const Text('Register'),
+                child: _isLoading
+                    ? const CircularProgressIndicator(
+                        color: Colors.white,
+                      )
+                    : const Text('Register'),
               ),
               TextButton(
                 onPressed: () {

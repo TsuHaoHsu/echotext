@@ -19,31 +19,23 @@ class ContactView extends StatefulWidget {
 class _ContactViewState extends State<ContactView> {
   final AuthService _authService = AuthService();
   List<Map<String, dynamic>> _friendList = [];
-  final ScrollController _scrollController = ScrollController();
-  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     _checkAccessToken();
-    _scrollController.addListener(_onScroll);
     _fetchFriendList();
   }
 
   @override
   void dispose(){
-    _scrollController.dispose();
     super.dispose();
   }
   
   Future<void> _fetchFriendList() async {
-    setState(() {
-      _isRefreshing = true;
-    });
     await UserService.fetchFriendList();
     setState(() {
       _friendList = UserService.friendList ?? [];
-      _isRefreshing = false;
     });
   }
 
@@ -51,20 +43,6 @@ class _ContactViewState extends State<ContactView> {
     if (!await TokenService().hasAccessToken()) {
       _authService.logout();
     }
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels < -50 && !_isRefreshing) {
-      // Trigger refresh when pulled down
-      setState(() {
-        _isRefreshing = true;
-      });
-      _fetchFriendList();
-    }
-  }
-
-  void listenForChanges(){
-    // wip
   }
 
   @override
@@ -106,48 +84,37 @@ class _ContactViewState extends State<ContactView> {
             )
           ],
         ),
-        body: Stack(
-          children: [
-            _friendList.isEmpty
-                ? const Center(child: Text('No friends found'))
-                : ListView.builder(
-                    controller: _scrollController,
-                    shrinkWrap: false,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: _friendList.length,
-                    itemBuilder: (context, index) {
-                      final friend = _friendList[index];
-                      return ListTile(
-                        leading: const CircleAvatar(
-                          radius: 30,
-                          backgroundImage:
-                              AssetImage('assets/images/default_avatar.png')
-                                  as ImageProvider,
-                        ),
-                        title: Text(friend['name'] ?? 'Unknown id'),
-                        onTap: () {
-                          Navigator.pushNamed(context, messageRoute,
-                              arguments: {
-                                'userId': friend['user_id'],
-                                'userName': friend['name'] ?? 'Unknown user',
-                              });
+      body: RefreshIndicator(
+        onRefresh: _fetchFriendList, // This triggers the refresh when pulled down
+        child: _friendList.isEmpty
+            ? const Center(child: Text('No friends found'))
+            : ListView.builder(
+                shrinkWrap: false,
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _friendList.length,
+                itemBuilder: (context, index) {
+                  final friend = _friendList[index];
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      radius: 30,
+                      backgroundImage: AssetImage('assets/images/default_avatar.png')
+                          as ImageProvider,
+                    ),
+                    title: Text(friend['name'] ?? 'Unknown id'),
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        messageRoute,
+                        arguments: {
+                          'userId': friend['user_id'],
+                          'userName': friend['name'] ?? 'Unknown user',
                         },
                       );
                     },
-                  ),
-            if (_isRefreshing)
-              Positioned(
-                top: 20,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).primaryColor),
-                  ),
-                ),
+                  );
+                },
               ),
-          ],
-        ));
+      ),
+    );
   }
 }

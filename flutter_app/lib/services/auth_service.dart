@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:echotext/constants/uri.dart';
 import 'package:echotext/services/token_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as devtools show log;
@@ -40,7 +41,7 @@ class AuthService {
 
   Future<Map<String,dynamic>?> _refreshAccessTokenFromAPI(String refreshToken) async {
 
-    const String apiUrl = "http://192.168.0.195:8000/user/refresh-token";
+    const String apiUrl = "${uriHTTP}user/refresh-token";
 
     final response = await http.post(
       Uri.parse(apiUrl),
