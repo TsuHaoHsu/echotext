@@ -50,7 +50,7 @@ Friend Requests: Send friend requests to other users, and accept or reject pendi
 
 ![image-removebg-preview](https://github.com/user-attachments/assets/4ec816a0-acf0-4a86-a678-cb6bbca5a7bb)
 
-Additional Notes
+## Additional Notes
 I use ngrok myself to host
 For FastAPI part there is a requirements.txt in fastapi folder for installing dependency in your virtual environment
 For flutter side all you need to change is uri.constant.dart, remove constant in filename and edit UriHTTP to your connection of choice
@@ -58,9 +58,11 @@ For flutter side all you need to change is uri.constant.dart, remove constant in
 For mongod the default ip is set to local host.
 if you run into any problem email me @ tsuhaohsu@gmail.com
 
-Acknowledgments
+## Acknowledgments
 Thank you to the Flutter and FastAPI communities for their great frameworks.
 Icons and other assets are sourced from FontAwesome and Icons8.
+Default profile picture © NIS America, Inc. All Rights Reserved.
+- All other trademarks are properties of their respective owners.
 
-License
+## License
 This project is licensed under the MIT License - see the LICENSE file for details.
