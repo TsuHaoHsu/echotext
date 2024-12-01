@@ -86,9 +86,7 @@ class _ContactViewState extends State<ContactView> {
         ),
       body: RefreshIndicator(
         onRefresh: _fetchFriendList, // This triggers the refresh when pulled down
-        child: _friendList.isEmpty
-            ? const Center(child: Text('No friends found'))
-            : ListView.builder(
+        child:  ListView.builder(
                 shrinkWrap: false,
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount: _friendList.length,
