@@ -23,10 +23,10 @@ Dart: Programming language for Flutter.
 
 ## Installation
 ### Prerequisites
-Flutter: Install Flutter SDK on your machine.
-MongoDB: Set up a local or remote MongoDB database (check MongoDB installation).
-FastAPI: Install FastAPI and dependencies for the backend.
-Android Studio/Android sdk/android emulator: If you want to test it on pc.
+- **Flutter**: Install Flutter SDK on your machine.  
+- **MongoDB**: Set up a local or remote MongoDB database (check MongoDB installation).  
+- **FastAPI**: Install FastAPI and dependencies for the backend.  
+- **Android Studio/Android SDK/Android Emulator**: If you want to test it on a PC.
 
 ## API Endpoints
 
@@ -34,11 +34,11 @@ Android Studio/Android sdk/android emulator: If you want to test it on pc.
 POST /user/login: Logs in a user and returns a JWT token.
 POST /user/register: Registers a new user.
 
-###Messaging
+### Messaging
 GET /messages: Retrieves a list of messages.
 POST /messages: Sends a new message.
 
-###Friend Requests
+### Friend Requests
 POST /friends/add: Sends a friend request.
 POST /friends/remove: Removes a friend.
 GET /friends/pending: Lists pending friend requests.
