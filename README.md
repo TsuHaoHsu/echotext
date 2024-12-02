@@ -51,9 +51,16 @@ Friend Requests: Send friend requests to other users, and accept or reject pendi
 ![image-removebg-preview](https://github.com/user-attachments/assets/4ec816a0-acf0-4a86-a678-cb6bbca5a7bb)
 
 ## Additional Notes
+
 I use ngrok myself to host
+
+### FastAPI
 For FastAPI part there is a requirements.txt in fastapi folder for installing dependency in your virtual environment
-For flutter side all you need to change is uri.constant.dart, remove constant in filename and edit UriHTTP to your connection of choice
+In db.template.py, remove template in filename and edit the url to your mongodb url.
+
+### Flutter
+For flutter side all you need to change is uri.template.dart (located in Constant folder),
+remove template in filename and edit UriHTTP to your connection of choice
 (mine was ngrok's to test with my phone) and UriWS to the ip of your fastapi where you host your fastapi.
 For mongod the default ip is set to local host.
 if you run into any problem email me @ tsuhaohsu@gmail.com
