@@ -3,7 +3,7 @@
 
 
 # class Settings(BaseSettings):
-#     mongo_uri: str = "mongodb://192.168.0.10:27017" // your mongodb ip
+#     mongo_uri: str = "mongodb://192.168.0.10:27017" # your mongodb ip
 
 # settings = Settings()
 
