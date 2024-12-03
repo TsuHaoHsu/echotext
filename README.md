@@ -6,7 +6,7 @@ EchoText is a real-time messaging app built using Flutter and FastAPI. It suppor
 The app integrates with MongoDB to store user and message data.
 
 ## Features
-- **User Authentication**: Login, registration, and JWT-based authentication.
+- **User Authentication**: Login, registration, and JWT-based authentication(Currently does not retain login upon closing app).
 - **Messaging**: Real-time text messaging with WebSocket support.
 - **Friend Requests**: Add, accept, or cancel friend requests.
 - **Profile Management**: View friends' profiles. (work in progress)
@@ -17,7 +17,7 @@ The app integrates with MongoDB to store user and message data.
 - **FastAPI**: For the backend API.
 - **MongoDB**: To store users and message data.
 - **WebSocket**: For real-time communication.
-- **JWT**: For secure user authentication.
+- **JWT**: For secure user authentication. 
 - **Riverpod**: For user id and token management.
 - **Dart**: Programming language for Flutter.
 
